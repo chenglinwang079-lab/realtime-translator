@@ -2,34 +2,28 @@ use tauri::{AppHandle, Emitter, Manager, WebviewWindow};
 use xcap::Monitor;
 
 /// 显示区域选择器的内部实现（可从命令和快捷键调用）
+///
+/// 选择器显示在光标所在显示器上（而非固定在主显示器），
+/// 支持多显示器环境。
 pub fn show_region_selector_impl(app: &AppHandle) -> Result<(), String> {
     // 隐藏气泡窗口
     if let Some(bubble) = app.get_webview_window("bubble") {
         let _ = bubble.hide();
     }
 
-    // 获取主显示器物理位置和尺寸
-    let monitors = Monitor::all().map_err(|e| format!("获取显示器列表失败: {}", e))?;
-    let primary = monitors
-        .into_iter()
-        .filter_map(|m| match m.is_primary() {
-            Ok(true) => Some(m),
-            Ok(false) => None,
-            Err(e) => {
-                log::warn!("is_primary() 失败: {}", e);
-                None
-            }
-        })
-        .next()
-        .ok_or("未找到主显示器")?;
+    // 获取光标位置，定位光标所在显示器
+    let cursor = crate::window::bubble::get_global_cursor_position();
+    let monitor =
+        xcap::Monitor::from_point(cursor.x, cursor.y)
+            .map_err(|e| format!("未找到光标所在显示器: {}", e))?;
 
-    let mon_x = primary.x().map_err(|e| format!("获取显示器 x 失败: {}", e))? as i32;
-    let mon_y = primary.y().map_err(|e| format!("获取显示器 y 失败: {}", e))? as i32;
-    let mon_w = primary.width().map_err(|e| format!("获取显示器宽度失败: {}", e))? as u32;
-    let mon_h = primary.height().map_err(|e| format!("获取显示器高度失败: {}", e))? as u32;
+    let mon_x = monitor.x().unwrap_or(0) as i32;
+    let mon_y = monitor.y().unwrap_or(0) as i32;
+    let mon_w = monitor.width().unwrap_or(1920) as u32;
+    let mon_h = monitor.height().unwrap_or(1080) as u32;
 
     log::info!(
-        "主显示器: pos=({}, {}), size={}x{}",
+        "光标所在显示器: pos=({}, {}), size={}x{}",
         mon_x, mon_y, mon_w, mon_h
     );
 
