@@ -1,4 +1,4 @@
-import { useCallback, useRef } from "react";
+import { useCallback } from "react";
 
 interface TranslationOutputProps {
   translatedText: string;
@@ -17,8 +17,6 @@ export function TranslationOutput({
   latencyMs,
   onRetry,
 }: TranslationOutputProps) {
-  const outputRef = useRef<HTMLDivElement>(null);
-
   const handleCopy = useCallback(() => {
     if (translatedText) {
       navigator.clipboard.writeText(translatedText);
@@ -52,7 +50,6 @@ export function TranslationOutput({
       </div>
 
       <div
-        ref={outputRef}
         className={`translation-output__content ${isTranslating ? "translation-output__content--loading" : ""}`}
       >
         {isTranslating ? (

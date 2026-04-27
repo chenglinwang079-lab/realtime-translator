@@ -2,7 +2,6 @@ import { useCallback } from "react";
 
 interface BubbleActionsProps {
   translatedText: string;
-  onCopy: () => void;
   onPin: () => void;
   onClose: () => void;
   onOpenSidebar: () => void;
@@ -10,7 +9,6 @@ interface BubbleActionsProps {
 
 export function BubbleActions({
   translatedText,
-  onCopy,
   onPin,
   onClose,
   onOpenSidebar,
@@ -18,9 +16,8 @@ export function BubbleActions({
   const handleCopy = useCallback(() => {
     if (translatedText) {
       navigator.clipboard.writeText(translatedText);
-      onCopy();
     }
-  }, [translatedText, onCopy]);
+  }, [translatedText]);
 
   return (
     <div className="bubble-actions">

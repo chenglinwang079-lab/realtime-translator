@@ -31,10 +31,6 @@ export function FloatingBubble({ onRetry }: { onRetry?: () => void }) {
     }
   }, [setBubbleState, clearCurrent]);
 
-  const handleCopy = useCallback(() => {
-    // 复制成功后的视觉反馈可后续添加
-  }, []);
-
   const handlePin = useCallback(() => {
     setBubbleState("pinned");
     toggleSidebar();
@@ -87,7 +83,6 @@ export function FloatingBubble({ onRetry }: { onRetry?: () => void }) {
           </div>
           <BubbleActions
             translatedText={currentResult?.translatedText ?? ""}
-            onCopy={handleCopy}
             onPin={handlePin}
             onClose={handleClose}
             onOpenSidebar={handleOpenSidebar}
