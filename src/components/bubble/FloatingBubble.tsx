@@ -116,7 +116,7 @@ export function FloatingBubble({ onRetry }: { onRetry?: () => void }) {
             latencyMs={currentResult?.latencyMs ?? 0}
             isTranslating={isTranslating}
             error={translateError}
-            onRetry={hasTranslation ? onRetry : undefined}
+            onRetry={translateError && currentOriginal ? onRetry : undefined}
           />
         )}
       </GlassCard>
