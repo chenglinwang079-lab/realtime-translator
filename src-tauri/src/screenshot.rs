@@ -47,25 +47,34 @@ pub fn capture_region_png(x: u32, y: u32, width: u32, height: u32) -> anyhow::Re
 
     let img = monitor.capture_image().context("截图失败")?;
 
-    // 裁剪到请求区域（坐标相对于显示器原点）
-    let mon_x = monitor.x().unwrap_or(0) as u32;
-    let mon_y = monitor.y().unwrap_or(0) as u32;
-    let crop_x = x.saturating_sub(mon_x);
-    let crop_y = y.saturating_sub(mon_y);
+    // i64 防止负坐标 wrap（副屏在左侧时 monitor.x() 为负）
+    let mon_x = monitor.x().unwrap_or(0) as i64;
+    let mon_y = monitor.y().unwrap_or(0) as i64;
+    let mon_w = img.width() as i64;
+    let mon_h = img.height() as i64;
 
-    // 防止 crop_imm 越界 panic：clamp 到实际图像尺寸
-    let img_w = img.width();
-    let img_h = img.height();
-    let safe_crop_x = crop_x.min(img_w.saturating_sub(1));
-    let safe_crop_y = crop_y.min(img_h.saturating_sub(1));
-    let safe_w = width.min(img_w.saturating_sub(safe_crop_x));
-    let safe_h = height.min(img_h.saturating_sub(safe_crop_y));
-    if safe_w == 0 || safe_h == 0 {
-        bail!("裁剪区域超出图像范围");
+    // 矩形相交检查：区域与显示器必须有正面积重叠
+    // （Monitor::from_point 仅保证区域中心在某显示器内，不保证整个区域都在该显示器内）
+    let region_x = x as i64;
+    let region_y = y as i64;
+    let region_x2 = region_x + width as i64;
+    let region_y2 = region_y + height as i64;
+    let overlap_x = region_x.max(mon_x);
+    let overlap_y = region_y.max(mon_y);
+    let overlap_x2 = region_x2.min(mon_x + mon_w);
+    let overlap_y2 = region_y2.min(mon_y + mon_h);
+    if overlap_x >= overlap_x2 || overlap_y >= overlap_y2 {
+        bail!("截图区域完全超出显示器范围");
     }
 
+    // 裁剪坐标（相对于显示器原点，不会为负因为上面已确认有重叠）
+    let crop_x = (overlap_x - mon_x) as u32;
+    let crop_y = (overlap_y - mon_y) as u32;
+    let safe_w = (overlap_x2 - overlap_x) as u32;
+    let safe_h = (overlap_y2 - overlap_y) as u32;
+
     let cropped =
-        image::imageops::crop_imm(&img, safe_crop_x, safe_crop_y, safe_w, safe_h).to_image();
+        image::imageops::crop_imm(&img, crop_x, crop_y, safe_w, safe_h).to_image();
     encode_png(&cropped)
 }
 

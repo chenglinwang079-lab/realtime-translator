@@ -97,11 +97,13 @@ pub async fn submit_region_selection(
         .outer_position()
         .map_err(|e| format!("获取窗口位置失败: {}", e))?;
 
-    // 起点 floor / 宽高 ceil，避免 DPI 缩放下边缘偏差
-    let global_x = pos.x + (x * scale).floor() as i32;
-    let global_y = pos.y + (y * scale).floor() as i32;
-    let global_w = (width * scale).ceil() as u32;
-    let global_h = (height * scale).ceil() as u32;
+    // i64 中间计算防止溢出，clamp 到 i32/u32 范围
+    let global_x = (pos.x as i64 + (x * scale).floor() as i64)
+        .clamp(i32::MIN as i64, i32::MAX as i64) as i32;
+    let global_y = (pos.y as i64 + (y * scale).floor() as i64)
+        .clamp(i32::MIN as i64, i32::MAX as i64) as i32;
+    let global_w = ((width * scale).ceil() as u64).min(u32::MAX as u64) as u32;
+    let global_h = ((height * scale).ceil() as u64).min(u32::MAX as u64) as u32;
 
     log::info!(
         "选区: logical=({}, {} {}x{}), scale={}, global=({}, {} {}x{})",
