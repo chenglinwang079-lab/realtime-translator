@@ -322,3 +322,20 @@ export async function stopUiaPollingFallback(): Promise<void> {
 export async function getUiaPollingState(): Promise<boolean> {
   return invoke("get_uia_polling_state");
 }
+
+// === OCR ===
+
+import type { OcrResult } from '../types/ocr';
+export type { OcrResult, OcrTextBlock, OcrLevel } from '../types/ocr';
+
+export async function ocrRecognize(imageBase64: string): Promise<OcrResult> {
+  return invoke<OcrResult>('ocr_recognize', { imageBase64 });
+}
+
+export async function getOcrEngines(): Promise<EngineInfo[]> {
+  return invoke<EngineInfo[]>('get_ocr_engines');
+}
+
+export async function testOcrEngine(engineId: string): Promise<number> {
+  return invoke<number>('test_ocr_engine', { engineId });
+}

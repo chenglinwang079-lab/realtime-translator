@@ -14,6 +14,9 @@ interface UiState {
   // Settings panel
   settingsOpen: boolean;
 
+  // OCR processing (截图翻译全流程 loading)
+  ocrProcessing: boolean;
+
   // Actions
   setBubbleState: (state: BubbleState) => void;
   toggleSidebar: () => void;
@@ -22,6 +25,7 @@ interface UiState {
   openSettings: () => void;
   closeSettings: () => void;
   toggleSettings: () => void;
+  setOcrProcessing: (processing: boolean) => void;
 }
 
 export const useUiStore = create<UiState>((set) => ({
@@ -29,6 +33,7 @@ export const useUiStore = create<UiState>((set) => ({
   sidebarVisible: false,
   sidebarTab: "translate",
   settingsOpen: false,
+  ocrProcessing: false,
 
   setBubbleState: (bubbleState) => set({ bubbleState }),
 
@@ -45,4 +50,6 @@ export const useUiStore = create<UiState>((set) => ({
 
   toggleSettings: () =>
     set((state) => ({ settingsOpen: !state.settingsOpen })),
+
+  setOcrProcessing: (ocrProcessing) => set({ ocrProcessing }),
 }));
