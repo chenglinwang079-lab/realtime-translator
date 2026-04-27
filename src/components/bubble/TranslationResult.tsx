@@ -1,4 +1,5 @@
 import { useCallback } from "react";
+import { EngineSwitcher } from "./EngineSwitcher";
 
 interface TranslationResultProps {
   originalText: string;
@@ -10,6 +11,7 @@ interface TranslationResultProps {
   isTranslating: boolean;
   error: string;
   onRetry?: () => void;
+  onEngineSwitch?: (engineId: string) => void;
 }
 
 export function TranslationResult({
@@ -22,6 +24,7 @@ export function TranslationResult({
   isTranslating,
   error,
   onRetry,
+  onEngineSwitch,
 }: TranslationResultProps) {
   const copyTranslation = useCallback(() => {
     if (translatedText) {
@@ -87,7 +90,14 @@ export function TranslationResult({
 
       {latencyMs > 0 && (
         <div className="translation-result__meta">
-          <span className="translation-result__engine">{engineId}</span>
+          {onEngineSwitch ? (
+            <EngineSwitcher
+              currentEngineId={engineId}
+              onEngineSwitch={onEngineSwitch}
+            />
+          ) : (
+            <span className="translation-result__engine">{engineId}</span>
+          )}
           <span className="translation-result__latency">{latencyMs}ms</span>
         </div>
       )}

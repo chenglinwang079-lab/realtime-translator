@@ -112,6 +112,7 @@ export function FloatingBubble({ onRetry }: { onRetry?: () => void }) {
             isTranslating={isTranslating}
             error={translateError}
             onRetry={translateError && currentOriginal ? onRetry : undefined}
+            onEngineSwitch={currentOriginal ? onRetry : undefined}
           />
         )}
       </GlassCard>
