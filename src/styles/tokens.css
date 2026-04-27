@@ -1,0 +1,127 @@
+/* Design Tokens — RealtimeTranslator v0.2 "Dark Luxury" */
+
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300;1,9..40,400&family=Space+Mono:wght@400;700&display=swap');
+
+:root {
+  /* === Color Palette — Deep Obsidian + Amber === */
+  --color-bg: #0a0a0c;
+  --color-bg-elevated: #111114;
+  --color-bg-hover: rgba(255, 255, 255, 0.04);
+  --color-bg-active: rgba(255, 255, 255, 0.08);
+
+  --color-surface: #16161a;
+  --color-surface-raised: #1c1c21;
+  --color-surface-overlay: rgba(22, 22, 26, 0.95);
+
+  --color-border: rgba(255, 255, 255, 0.06);
+  --color-border-subtle: rgba(255, 255, 255, 0.03);
+  --color-border-hover: rgba(255, 255, 255, 0.12);
+  --color-border-accent: rgba(232, 179, 78, 0.3);
+
+  --color-text: #f0ece4;
+  --color-text-secondary: rgba(240, 236, 228, 0.6);
+  --color-text-tertiary: rgba(240, 236, 228, 0.35);
+  --color-text-inverse: #0a0a0c;
+
+  /* Amber/Gold accent — luxury feel */
+  --color-accent: #e8b34e;
+  --color-accent-hover: #f0c56a;
+  --color-accent-dim: #c49a3c;
+  --color-accent-subtle: rgba(232, 179, 78, 0.1);
+  --color-accent-glow: rgba(232, 179, 78, 0.15);
+
+  /* Semantic — muted, refined */
+  --color-success: #5cb176;
+  --color-success-subtle: rgba(92, 177, 118, 0.1);
+  --color-warning: #d4a84b;
+  --color-warning-subtle: rgba(212, 168, 75, 0.1);
+  --color-error: #c75c5c;
+  --color-error-subtle: rgba(199, 92, 92, 0.1);
+
+  /* === Typography === */
+  --font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "Space Mono", "JetBrains Mono", monospace;
+
+  --text-2xs: 0.625rem;  /* 10px */
+  --text-xs: 0.6875rem;  /* 11px */
+  --text-sm: 0.75rem;    /* 12px */
+  --text-base: 0.8125rem; /* 13px */
+  --text-md: 0.875rem;   /* 14px */
+  --text-lg: 1rem;       /* 16px */
+  --text-xl: 1.25rem;    /* 20px */
+  --text-2xl: 1.5rem;    /* 24px */
+
+  --leading-tight: 1.25;
+  --leading-normal: 1.5;
+  --leading-relaxed: 1.65;
+
+  --weight-light: 300;
+  --weight-normal: 400;
+  --weight-medium: 500;
+  --weight-semibold: 600;
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0;
+  --tracking-wide: 0.04em;
+  --tracking-wider: 0.08em;
+
+  /* === Spacing === */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-10: 40px;
+  --space-12: 48px;
+
+  /* === Radius — slightly tighter for luxury feel === */
+  --radius-xs: 4px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --radius-xl: 16px;
+  --radius-full: 9999px;
+
+  /* === Shadow — deeper, more dramatic === */
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
+  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+  --shadow-xl: 0 16px 64px rgba(0, 0, 0, 0.7);
+  --shadow-glow: 0 0 40px rgba(232, 179, 78, 0.08);
+  --shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+
+  /* === Animation — smooth, deliberate === */
+  --duration-fast: 150ms;
+  --duration-normal: 250ms;
+  --duration-slow: 400ms;
+  --duration-slower: 600ms;
+
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* === Layout === */
+  --sidebar-width: 380px;
+  --bubble-max-width: 420px;
+  --bubble-max-height: 320px;
+  --header-height: 40px;
+
+  /* === Gradients === */
+  --gradient-surface: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0) 100%
+  );
+  --gradient-accent: linear-gradient(
+    135deg,
+    #e8b34e 0%,
+    #d4a03a 100%
+  );
+  --gradient-border: linear-gradient(
+    135deg,
+    rgba(232, 179, 78, 0.2) 0%,
+    rgba(232, 179, 78, 0) 100%
+  );
+}

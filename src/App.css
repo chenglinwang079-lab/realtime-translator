@@ -1,0 +1,11 @@
+/* App Container */
+.app {
+  width: 100vw;
+  height: 100vh;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-start;
+  padding: var(--space-4);
+  overflow: hidden;
+  background: var(--color-bg);
+}

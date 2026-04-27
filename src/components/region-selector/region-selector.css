@@ -1,0 +1,65 @@
+/* Region Selector — 全屏覆盖选区 */
+
+.region-selector {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  cursor: crosshair;
+  user-select: none;
+  -webkit-user-select: none;
+  /* 确保透明窗口背景 */
+  background: transparent;
+}
+
+/* 四块遮罩 — 围住选区外的区域 */
+.region-selector__mask {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.45);
+  pointer-events: none;
+}
+
+.region-selector__mask--top {
+  top: 0;
+  left: 0;
+  right: 0;
+}
+
+.region-selector__mask--bottom {
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.region-selector__mask--left {
+  left: 0;
+}
+
+.region-selector__mask--right {
+  right: 0;
+}
+
+/* 选区边框 */
+.region-selector__rect {
+  position: absolute;
+  border: 2px solid var(--color-accent, #e8b34e);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.3),
+    0 0 12px rgba(232, 179, 78, 0.2);
+  pointer-events: none;
+}
+
+/* 尺寸提示 */
+.region-selector__size {
+  position: absolute;
+  font-family: var(--font-mono, "Space Mono", monospace);
+  font-size: var(--text-sm, 12px);
+  color: #fff;
+  background: rgba(0, 0, 0, 0.65);
+  padding: 2px 8px;
+  border-radius: var(--radius-xs, 4px);
+  pointer-events: none;
+  white-space: nowrap;
+  line-height: 1.5;
+  /* 位于选区右下角下方 */
+  transform: translate(0, 4px);
+}
