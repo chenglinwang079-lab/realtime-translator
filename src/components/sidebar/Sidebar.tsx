@@ -209,22 +209,41 @@ export function Sidebar() {
       const textFile = files.find((f) =>
         f.type.startsWith("text/") ||
         f.name.endsWith(".txt") ||
-        f.name.endsWith(".md")
+        f.name.endsWith(".md") ||
+        f.name.endsWith(".csv") ||
+        f.name.endsWith(".json") ||
+        f.name.endsWith(".log")
       );
 
       if (textFile) {
+        // 限制文件大小 100KB
+        if (textFile.size > 100 * 1024) {
+          setTranslateError("文件过大，请拖入 100KB 以内的文本文件");
+          return;
+        }
         const reader = new FileReader();
-        reader.onload = (event) => {
-          const text = event.target?.result as string;
+        reader.onload = async (event) => {
+          const text = (event.target?.result as string)?.trim();
           if (text) {
             setInputText(text);
             setCurrentOriginal(text);
+            // 自动触发翻译
+            setTranslating(true);
+            setTranslateError("");
+            try {
+              const result = await translate(text);
+              setCurrentResult(result);
+            } catch (err) {
+              setTranslateError(err instanceof Error ? err.message : String(err));
+            } finally {
+              setTranslating(false);
+            }
           }
         };
         reader.readAsText(textFile);
       }
     },
-    [setCurrentOriginal]
+    [setCurrentOriginal, setTranslating, setTranslateError, setCurrentResult]
   );
 
   if (!sidebarVisible) {
