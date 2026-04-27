@@ -166,9 +166,9 @@ pub fn run() {
                 if let Some(ref key) = config.api_key {
                     if !key.is_empty()
                         && (config.engine_id.starts_with("google-vision")
-                            || config.engine_id.starts_with("baidu-ocr"))
+                            || config.engine_id == "baidu-ocr")
                     {
-                        match ocr_manager.reload_engine(&config.engine_id, key) {
+                        match ocr_manager.reload_engine(&config.engine_id, key, config.extra_json.as_deref()) {
                             Ok(()) => {
                                 log::info!("OCR 引擎已从 DB 加载: {}", config.engine_id);
                             }
@@ -189,6 +189,18 @@ pub fn run() {
                     }
                     Err(e) => {
                         log::debug!("Google Vision OCR 跳过: {}", e);
+                    }
+                }
+            }
+
+            if ocr_manager.get_engine("baidu-ocr").is_none() {
+                match ocr::baidu_ocr::BaiduOcrEngine::new() {
+                    Ok(engine) => {
+                        log::info!("百度 OCR 已注册（环境变量）");
+                        ocr_manager.register(Arc::new(engine));
+                    }
+                    Err(e) => {
+                        log::debug!("百度 OCR 跳过: {}", e);
                     }
                 }
             }

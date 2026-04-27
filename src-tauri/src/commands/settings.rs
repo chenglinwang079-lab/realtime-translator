@@ -179,7 +179,7 @@ pub async fn save_api_key(
         .await
         .map_err(|e| format!("保存 API Key 失败: {}", e))?;
 
-    // 腾讯云的 secret_key 存到 extra_json
+    // 腾讯云/百度 OCR 的 secret_key 存到 extra_json
     if let Some(ref extra_val) = extra {
         db.set_engine_extra(&engine_id, extra_val)
             .await
@@ -187,9 +187,9 @@ pub async fn save_api_key(
     }
 
     // 按 engine_id 前缀分流到对应管理器
-    if engine_id.starts_with("google-vision") || engine_id.starts_with("baidu-ocr") {
+    if engine_id.starts_with("google-vision") || engine_id == "baidu-ocr" {
         let mut mgr = ocr_mgr.0.lock().await;
-        mgr.reload_engine(&engine_id, &api_key)
+        mgr.reload_engine(&engine_id, &api_key, extra.as_deref())
             .map_err(|e| format!("OCR 引擎重载失败: {}", e))?;
         log::info!("OCR 引擎已重载: {}", engine_id);
     } else {
@@ -219,7 +219,7 @@ pub async fn delete_api_key(
         .map_err(|e| format!("删除 API Key 失败: {}", e))?;
 
     // 按 engine_id 前缀分流到对应管理器
-    if engine_id.starts_with("google-vision") || engine_id.starts_with("baidu-ocr") {
+    if engine_id.starts_with("google-vision") || engine_id == "baidu-ocr" {
         let mut mgr = ocr_mgr.0.lock().await;
         mgr.remove_engine(&engine_id);
         log::info!("OCR 引擎已移除: {}", engine_id);

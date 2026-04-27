@@ -54,7 +54,7 @@ export function EngineConfig({
       const key = apiKeyInput.trim();
       if (!key) return;
 
-      if (engineId === "tencent-tmt") {
+      if (engineId === "tencent-tmt" || engineId === "baidu-ocr") {
         const secretKey = extraInput.trim();
         if (!secretKey) return;
         await onSaveApiKey(engineId, key, secretKey);
@@ -176,7 +176,7 @@ export function EngineConfig({
                     }
                   }}
                 />
-                {engine.id === "tencent-tmt" && (
+                {(engine.id === "tencent-tmt" || engine.id === "baidu-ocr") && (
                   <input
                     type="password"
                     className="engine-card__api-key-input"
@@ -196,7 +196,7 @@ export function EngineConfig({
                     onClick={() => handleSaveApiKey(engine.id)}
                     disabled={
                       !apiKeyInput.trim() ||
-                      (engine.id === "tencent-tmt" && !extraInput.trim())
+                      ((engine.id === "tencent-tmt" || engine.id === "baidu-ocr") && !extraInput.trim())
                     }
                     type="button"
                   >
