@@ -23,7 +23,8 @@
         "skipTaskbar": true,
         "visible": false,
         "x": 100,
-        "y": 100
+        "y": 100,
+        "dragDropEnabled": false
       },
       {
         "label": "selector",

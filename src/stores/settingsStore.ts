@@ -5,7 +5,7 @@ import { getSettings, updateSettings } from "../lib/tauri-bridge";
 const DEFAULT_SETTINGS: AppSettings = {
   theme: "dark",
   defaultSourceLang: "auto",
-  defaultTargetLang: "auto",
+  defaultTargetLang: "zh",
   defaultEngine: "tencent-tmt",
   autoStart: false,
   enableHistory: true,

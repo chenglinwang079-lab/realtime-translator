@@ -46,6 +46,10 @@ export function Sidebar() {
   const MIN_WIDTH = 300;
   const MAX_WIDTH = 600;
 
+  // PoC 3: 通过 UIA 抓取其他应用的选中文本
+  const [uiaError, setUiaError] = useState("");
+  const [isGrabbing, setIsGrabbing] = useState(false);
+
   // 侧边栏打开/关闭时调整窗口宽度（保持当前高度）
   useEffect(() => {
     const adjustWidth = async () => {
@@ -179,8 +183,6 @@ export function Sidebar() {
   }, []);
 
   // PoC 3: 通过 UIA 抓取其他应用的选中文本
-  const [uiaError, setUiaError] = useState("");
-  const [isGrabbing, setIsGrabbing] = useState(false);
   const handleGrabText = useCallback(async () => {
     if (isGrabbing) return;
     setIsGrabbing(true);
