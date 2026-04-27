@@ -10,7 +10,7 @@ import { useRegionSelector } from "./hooks/useRegionSelector";
 import { useSettingsStore } from "./stores/settingsStore";
 import { useTranslationStore } from "./stores/translationStore";
 import { useUiStore } from "./stores/uiStore";
-import { onOpenSettings } from "./lib/tauri-bridge";
+import { onOpenSettings, translate } from "./lib/tauri-bridge";
 import "./App.css";
 
 // 窗口路由：selector 窗口只渲染选区组件
@@ -55,6 +55,59 @@ function BubbleApp() {
 
   const loadSettings = useSettingsStore((s) => s.loadSettings);
   const openSettings = useUiStore((s) => s.openSettings);
+  const setSidebarVisible = useUiStore((s) => s.setSidebarVisible);
+
+  // 文件拖入翻译
+  const setCurrentOriginal = useTranslationStore((s) => s.setCurrentOriginal);
+  const setCurrentResult = useTranslationStore((s) => s.setCurrentResult);
+  const setTranslating = useTranslationStore((s) => s.setTranslating);
+  const setTranslateError = useTranslationStore((s) => s.setTranslateError);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  }, []);
+
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      const files = Array.from(e.dataTransfer.files);
+      const textFile = files.find(
+        (f) =>
+          f.type.startsWith("text/") ||
+          f.name.endsWith(".txt") ||
+          f.name.endsWith(".md") ||
+          f.name.endsWith(".csv") ||
+          f.name.endsWith(".json") ||
+          f.name.endsWith(".log"),
+      );
+      if (!textFile) return;
+      if (textFile.size > 100 * 1024) {
+        setTranslateError("文件过大，请拖入 100KB 以内的文本文件");
+        setSidebarVisible(true);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = async (event) => {
+        const text = (event.target?.result as string)?.trim();
+        if (!text) return;
+        setCurrentOriginal(text);
+        setSidebarVisible(true);
+        setTranslating(true);
+        setTranslateError("");
+        try {
+          const result = await translate(text);
+          setCurrentResult(result);
+        } catch (err) {
+          setTranslateError(err instanceof Error ? err.message : String(err));
+        } finally {
+          setTranslating(false);
+        }
+      };
+      reader.readAsText(textFile);
+    },
+    [setCurrentOriginal, setCurrentResult, setTranslating, setTranslateError, setSidebarVisible],
+  );
 
   // 启动时加载设置
   useEffect(() => {
@@ -80,7 +133,7 @@ function BubbleApp() {
   }, []);
 
   return (
-    <div className="app">
+    <div className="app" onDragOver={handleDragOver} onDrop={handleDrop}>
       <FloatingBubble onRetry={handleRetry} />
       <Sidebar />
       <Settings />
