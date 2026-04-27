@@ -3,6 +3,7 @@ use std::sync::Arc;
 use anyhow::{bail, Context};
 use serde::Serialize;
 
+use super::baidu_ocr::BaiduOcrEngine;
 use super::engine::{OcrEngine, OcrEngineInfo};
 use super::google_vision::GoogleVisionEngine;
 
@@ -87,6 +88,22 @@ impl OcrEngineManager {
             .cloned()
     }
 
+    /// 获取默认或指定引擎（返回 Arc 克隆，供无锁调用）
+    pub fn get_default_or_preferred(&self, preferred: Option<&str>) -> Option<Arc<dyn OcrEngine>> {
+        if let Some(id) = preferred {
+            self.get_engine(id)
+                .filter(|e| e.is_available())
+                .or_else(|| self.get_default())
+        } else {
+            self.get_default()
+        }
+    }
+
+    /// 获取 fallback 引擎（返回 Arc 克隆，供无锁调用）
+    pub fn get_fallback_engine(&self, exclude_id: &str) -> Option<Arc<dyn OcrEngine>> {
+        self.get_fallback(exclude_id)
+    }
+
     /// OCR 识别：使用指定引擎或默认引擎，失败时尝试 fallback
     pub async fn recognize(
         &self,
@@ -155,10 +172,18 @@ impl OcrEngineManager {
     ///
     /// 职责边界：仅负责运行态重载（内存替换），不涉及持久化。
     /// engine_id 使用精确匹配。
-    pub fn reload_engine(&mut self, engine_id: &str, api_key: &str) -> anyhow::Result<()> {
+    /// extra 用于百度 OCR 的 secret_key（纯字符串，与 tencent-tmt 模式一致）。
+    pub fn reload_engine(&mut self, engine_id: &str, api_key: &str, extra: Option<&str>) -> anyhow::Result<()> {
         let new_engine: Arc<dyn OcrEngine> = match engine_id {
             "google-vision" => {
                 Arc::new(GoogleVisionEngine::new_with_key(api_key.to_string())?)
+            }
+            "baidu-ocr" => {
+                let secret_key = extra.unwrap_or_default().to_string();
+                if secret_key.is_empty() {
+                    bail!("百度 OCR 需要 Secret Key（通过 extra 参数传入）");
+                }
+                Arc::new(BaiduOcrEngine::new_with_credentials(api_key.to_string(), secret_key)?)
             }
             _ => bail!("未知 OCR 引擎: {}", engine_id),
         };

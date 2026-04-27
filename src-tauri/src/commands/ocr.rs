@@ -1,4 +1,5 @@
 use std::sync::Arc;
+use std::time::Duration;
 
 use base64::Engine;
 use tauri::State;
@@ -22,18 +23,58 @@ pub async fn ocr_recognize(
     ocr_mgr: State<'_, OcrEngineManagerState>,
 ) -> Result<crate::ocr::engine::OcrResult, String> {
     if image_base64.is_empty() {
-        return Err("图片数据为空".to_string());
+        return Err("[OCR_INPUT] 图片数据为空".to_string());
     }
 
     let image_data = base64::engine::general_purpose::STANDARD
         .decode(&image_base64)
-        .map_err(|e| format!("base64 解码失败: {}", e))?;
+        .map_err(|e| format!("[OCR_INPUT] base64 解码失败: {}", e))?;
 
-    let manager = ocr_mgr.0.lock().await;
-    manager
-        .recognize(&image_data, None)
-        .await
-        .map_err(|e| e.to_string())
+    // 1. 取出引擎 Arc，释放 Mutex
+    let primary = {
+        let manager = ocr_mgr.0.lock().await;
+        manager.get_default_or_preferred(None)
+    }; // MutexGuard 在此释放
+
+    let primary = primary.ok_or("[OCR_ENGINE] 没有可用的 OCR 引擎")?;
+    let primary_id = primary.engine_id().to_string();
+
+    // 2. 在无锁状态下执行 OCR，包裹超时
+    let result = tokio::time::timeout(Duration::from_secs(30), async {
+        primary.recognize(&image_data).await
+    })
+    .await
+    .map_err(|_| "[OCR_TIMEOUT] OCR 识别超时".to_string())?
+    .map_err(|e| format!("[OCR] {}", e));
+
+    // 3. 主引擎失败 → 尝试 fallback（同样无锁）
+    match result {
+        Ok(ok) => Ok(ok),
+        Err(primary_err) => {
+            let fallback = {
+                let manager = ocr_mgr.0.lock().await;
+                manager.get_fallback_engine(&primary_id)
+            };
+            if let Some(fb) = fallback {
+                let fb_id = fb.engine_id().to_string();
+                tokio::time::timeout(Duration::from_secs(30), async {
+                    fb.recognize(&image_data).await
+                })
+                .await
+                .map_err(|_| "[OCR_TIMEOUT] Fallback OCR 超时".to_string())?
+                // [OCR_FALLBACK] 前缀由前端 friendlyMessage 映射为通用提示；
+                // 原始错误详情仅用于调试日志，不直接展示给用户
+                .map_err(|e| {
+                    format!(
+                        "[OCR_FALLBACK] 所有引擎失败。主({}): {} | Fb({}): {}",
+                        primary_id, primary_err, fb_id, e
+                    )
+                })
+            } else {
+                Err(primary_err)
+            }
+        }
+    }
 }
 
 /// 获取所有 OCR 引擎列表

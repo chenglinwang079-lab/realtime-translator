@@ -1,11 +1,12 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use anyhow::{bail, Context};
 use base64::Engine;
 use reqwest::Client;
 use serde::Deserialize;
 
-use super::engine::{OcrEngine, OcrResult, OcrTextBlock};
+use super::engine::{OcrEngine, OcrLevel, OcrResult, OcrTextBlock};
+use super::group_words_to_lines;
 use super::truncate_error_body;
 
 const VISION_API_URL: &str = "https://vision.googleapis.com/v1/images:annotate";
@@ -65,6 +66,8 @@ impl GoogleVisionEngine {
     pub fn new_with_key(api_key: String) -> anyhow::Result<Self> {
         let client = Client::builder()
             .use_rustls_tls()
+            .connect_timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(30))
             .build()
             .context("创建 HTTP client 失败")?;
         Ok(Self { api_key, client })
@@ -97,6 +100,23 @@ impl GoogleVisionEngine {
             (max_y - min_y) as f64,
         ])
     }
+
+    /// 将 bounding_poly 转换为原始多边形顶点（保留旋转信息）
+    fn extract_polygon(poly: &BoundingPoly) -> Option<Vec<[f64; 2]>> {
+        let valid: Vec<[f64; 2]> = poly
+            .vertices
+            .iter()
+            .filter_map(|v| match (v.x, v.y) {
+                (Some(x), Some(y)) => Some([x as f64, y as f64]),
+                _ => None,
+            })
+            .collect();
+        if valid.len() >= 2 {
+            Some(valid)
+        } else {
+            None
+        }
+    }
 }
 
 #[async_trait::async_trait]
@@ -125,11 +145,10 @@ impl OcrEngine for GoogleVisionEngine {
             }]
         });
 
-        let url = format!("{}?key={}", VISION_API_URL, self.api_key);
-
         let response = self
             .client
-            .post(&url)
+            .post(VISION_API_URL)
+            .header("x-goog-api-key", &self.api_key)
             .json(&body)
             .send()
             .await
@@ -171,22 +190,53 @@ impl OcrEngine for GoogleVisionEngine {
             });
         }
 
-        // 第一个元素是全文 + locale
-        let full_text = annotations[0].description.clone();
+        // 第一个元素是全文 + locale（原始全文由 line texts 重建，此处仅提取 locale）
         let language = annotations[0].locale.clone();
 
         // 后续元素是逐词/逐行文本块
-        let blocks: Vec<OcrTextBlock> = annotations[1..]
+        let words: Vec<OcrTextBlock> = annotations[1..]
             .iter()
-            .map(|ann| OcrTextBlock {
-                text: ann.description.clone(),
-                bbox: ann
+            .map(|ann| {
+                let bbox = ann
                     .bounding_poly
                     .as_ref()
-                    .and_then(|poly| Self::convert_bbox(poly)),
-                confidence: None,
+                    .and_then(|poly| Self::convert_bbox(poly));
+                let polygon = ann
+                    .bounding_poly
+                    .as_ref()
+                    .and_then(|poly| Self::extract_polygon(poly));
+                let font_size = bbox.map(|b| b[3]); // height = estimated font size
+
+                OcrTextBlock {
+                    text: ann.description.clone(),
+                    bbox,
+                    polygon,
+                    confidence: None,
+                    font_size,
+                    level: OcrLevel::Word,
+                }
             })
             .collect();
+
+        // 行分组：将 word 按空间位置合并为 line
+        let lines = group_words_to_lines(&words);
+
+        // 无 bbox 的 word 保留（不丢词）
+        let no_bbox_words: Vec<&OcrTextBlock> =
+            words.iter().filter(|w| w.bbox.is_none()).collect();
+
+        // full_text：line texts 用 \n 连接 + 无 bbox word texts 追加
+        let mut full_text_parts: Vec<String> = lines.iter().map(|l| l.text.clone()).collect();
+        for w in &no_bbox_words {
+            full_text_parts.push(w.text.clone());
+        }
+        let full_text = full_text_parts.join("\n");
+
+        // 合并 blocks：lines 在前，words 在后
+        // 设计意图：lines 用于布局定位，words 用于逐词高亮。
+        // 前端应按 level 字段区分使用，避免重复渲染。
+        let mut blocks = lines;
+        blocks.extend(words);
 
         Ok(OcrResult {
             blocks,
@@ -299,5 +349,103 @@ mod tests {
         let bbox = GoogleVisionEngine::convert_bbox(ann.bounding_poly.as_ref().unwrap());
         // 只有 1 个有效顶点 (10, _) 和 (_, 20) 都不完整 → None
         assert_eq!(bbox, None);
+    }
+
+    #[test]
+    fn extract_polygon_full() {
+        let poly = BoundingPoly {
+            vertices: vec![
+                Vertex { x: Some(10), y: Some(20) },
+                Vertex { x: Some(50), y: Some(20) },
+                Vertex { x: Some(50), y: Some(50) },
+                Vertex { x: Some(10), y: Some(50) },
+            ],
+        };
+        let result = GoogleVisionEngine::extract_polygon(&poly);
+        assert_eq!(
+            result,
+            Some(vec![
+                [10.0, 20.0],
+                [50.0, 20.0],
+                [50.0, 50.0],
+                [10.0, 50.0],
+            ])
+        );
+    }
+
+    #[test]
+    fn extract_polygon_partial() {
+        let poly = BoundingPoly {
+            vertices: vec![
+                Vertex { x: Some(10), y: None },
+                Vertex { x: None, y: Some(20) },
+            ],
+        };
+        let result = GoogleVisionEngine::extract_polygon(&poly);
+        assert_eq!(result, None);
+    }
+
+    #[test]
+    fn parse_response_enhanced_fields() {
+        let json = r#"{
+            "responses": [{
+                "textAnnotations": [
+                    {
+                        "description": "Hello World",
+                        "locale": "en",
+                        "boundingPoly": {
+                            "vertices": [
+                                {"x": 10, "y": 20},
+                                {"x": 100, "y": 20},
+                                {"x": 100, "y": 50},
+                                {"x": 10, "y": 50}
+                            ]
+                        }
+                    },
+                    {
+                        "description": "Hello",
+                        "boundingPoly": {
+                            "vertices": [
+                                {"x": 10, "y": 20},
+                                {"x": 50, "y": 20},
+                                {"x": 50, "y": 50},
+                                {"x": 10, "y": 50}
+                            ]
+                        }
+                    },
+                    {
+                        "description": "World",
+                        "boundingPoly": {
+                            "vertices": [
+                                {"x": 60, "y": 20},
+                                {"x": 100, "y": 20},
+                                {"x": 100, "y": 50},
+                                {"x": 60, "y": 50}
+                            ]
+                        }
+                    }
+                ]
+            }]
+        }"#;
+
+        let resp: VisionResponse = serde_json::from_str(json).unwrap();
+        let ann = &resp.responses[0].text_annotations.as_ref().unwrap()[1];
+
+        // 验证 extract_polygon
+        let polygon = GoogleVisionEngine::extract_polygon(ann.bounding_poly.as_ref().unwrap());
+        assert_eq!(
+            polygon,
+            Some(vec![
+                [10.0, 20.0],
+                [50.0, 20.0],
+                [50.0, 50.0],
+                [10.0, 50.0],
+            ])
+        );
+
+        // 验证 bbox → font_size
+        let bbox = GoogleVisionEngine::convert_bbox(ann.bounding_poly.as_ref().unwrap());
+        assert_eq!(bbox, Some([10.0, 20.0, 40.0, 30.0]));
+        assert_eq!(bbox.map(|b| b[3]), Some(30.0)); // font_size = height
     }
 }

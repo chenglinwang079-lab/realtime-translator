@@ -1,5 +1,21 @@
 use serde::{Deserialize, Serialize};
 
+/// OCR 文本块的层级
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub enum OcrLevel {
+    Word,
+    Line,
+    Block,
+    Paragraph,
+}
+
+impl Default for OcrLevel {
+    fn default() -> Self {
+        Self::Word
+    }
+}
+
 /// 单个识别文本块
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -8,8 +24,15 @@ pub struct OcrTextBlock {
     pub text: String,
     /// 边界框 [x, y, width, height]（像素坐标，可选）
     pub bbox: Option<[f64; 4]>,
+    /// 原始多边形顶点 [[x,y], ...]（word 保真旋转，line 为轴对齐近似）
+    pub polygon: Option<Vec<[f64; 2]>>,
     /// 置信度 0.0~1.0（可选）
     pub confidence: Option<f64>,
+    /// 估算字号（像素），取自 bbox 高度
+    pub font_size: Option<f64>,
+    /// 文本块层级
+    #[serde(default)]
+    pub level: OcrLevel,
 }
 
 /// OCR 识别结果
