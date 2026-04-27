@@ -9,6 +9,7 @@ import {
   setWindowSize,
   getSelectedText,
   onUiaTextCaptured,
+  showRegionSelector,
   type UiaTextCapturedEvent,
 } from "../../lib/tauri-bridge";
 import { getCurrentWindow } from "@tauri-apps/api/window";
@@ -20,6 +21,7 @@ const SIDEBAR_DEFAULT_WIDTH = 360;
 export function Sidebar() {
   const sidebarVisible = useUiStore((s) => s.sidebarVisible);
   const setSidebarVisible = useUiStore((s) => s.setSidebarVisible);
+  const ocrProcessing = useUiStore((s) => s.ocrProcessing);
 
   const currentOriginal = useTranslationStore((s) => s.currentOriginal);
   const currentResult = useTranslationStore((s) => s.currentResult);
@@ -29,6 +31,9 @@ export function Sidebar() {
   const setCurrentResult = useTranslationStore((s) => s.setCurrentResult);
   const setTranslating = useTranslationStore((s) => s.setTranslating);
   const setTranslateError = useTranslationStore((s) => s.setTranslateError);
+
+  // 统一 busy 语义：OCR 阶段或翻译阶段都算忙碌
+  const screenOcrBusy = ocrProcessing || isTranslating;
 
   const [inputText, setInputText] = useState(currentOriginal);
   const [sourceLang, setSourceLang] = useState("auto");
@@ -321,6 +326,29 @@ export function Sidebar() {
         <div className="sidebar__uia-error">{uiaError}</div>
       )}
 
+      {/* 截图翻译按钮 */}
+      <button
+        className={`sidebar__ocr-btn ${ocrProcessing ? "sidebar__ocr-btn--loading" : ""}`}
+        onClick={() => showRegionSelector()}
+        disabled={screenOcrBusy}
+        type="button"
+        title="框选屏幕区域进行 OCR 截图翻译（快捷键: Ctrl+Shift+R）"
+      >
+        <svg
+          width="14"
+          height="14"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+        >
+          <rect x="3" y="3" width="18" height="18" rx="2" />
+          <circle cx="8.5" cy="8.5" r="1.5" />
+          <path d="M21 15l-5-5L5 21" />
+        </svg>
+        {ocrProcessing ? "识别中..." : isTranslating ? "翻译中..." : "截图翻译 (Ctrl+Shift+R)"}
+      </button>
+
       {/* 翻译结果 */}
       <TranslationOutput
         translatedText={currentResult?.translatedText ?? ""}
@@ -328,6 +356,7 @@ export function Sidebar() {
         error={translateError}
         engineId={currentResult?.engineId}
         latencyMs={currentResult?.latencyMs}
+        onRetry={currentOriginal ? handleTranslate : undefined}
       />
 
       {/* 文件拖入提示 */}

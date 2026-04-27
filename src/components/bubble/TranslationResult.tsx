@@ -9,6 +9,7 @@ interface TranslationResultProps {
   latencyMs: number;
   isTranslating: boolean;
   error: string;
+  onRetry?: () => void;
 }
 
 export function TranslationResult({
@@ -20,6 +21,7 @@ export function TranslationResult({
   latencyMs,
   isTranslating,
   error,
+  onRetry,
 }: TranslationResultProps) {
   const copyTranslation = useCallback(() => {
     if (translatedText) {
@@ -57,7 +59,20 @@ export function TranslationResult({
           </div>
         )}
 
-        {error && <div className="translation-result__error">{error}</div>}
+        {error && (
+          <div className="translation-result__error">
+            <span>{error}</span>
+            {onRetry && (
+              <button
+                className="translation-result__retry"
+                onClick={onRetry}
+                type="button"
+              >
+                重试
+              </button>
+            )}
+          </div>
+        )}
 
         {!isTranslating && !error && translatedText && (
           <div

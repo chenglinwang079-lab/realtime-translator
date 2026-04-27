@@ -6,6 +6,7 @@ interface TranslationOutputProps {
   error?: string | null;
   engineId?: string;
   latencyMs?: number;
+  onRetry?: () => void;
 }
 
 export function TranslationOutput({
@@ -14,6 +15,7 @@ export function TranslationOutput({
   error,
   engineId,
   latencyMs,
+  onRetry,
 }: TranslationOutputProps) {
   const outputRef = useRef<HTMLDivElement>(null);
 
@@ -73,6 +75,15 @@ export function TranslationOutput({
               <line x1="12" y1="16" x2="12.01" y2="16" />
             </svg>
             <span>{error}</span>
+            {onRetry && (
+              <button
+                className="translation-output__retry"
+                onClick={onRetry}
+                type="button"
+              >
+                重试
+              </button>
+            )}
           </div>
         ) : translatedText ? (
           <div className="translation-output__text">{translatedText}</div>

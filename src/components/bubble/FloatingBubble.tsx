@@ -8,7 +8,7 @@ import { hideBubbleWindow } from "../../lib/tauri-bridge";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./bubble.css";
 
-export function FloatingBubble() {
+export function FloatingBubble({ onRetry }: { onRetry?: () => void }) {
   const currentOriginal = useTranslationStore((s) => s.currentOriginal);
   const currentResult = useTranslationStore((s) => s.currentResult);
   const isTranslating = useTranslationStore((s) => s.isTranslating);
@@ -103,7 +103,7 @@ export function FloatingBubble() {
               复制文本即可自动翻译
             </p>
             <p className="floating-bubble__hint-sub">
-              支持中英互译 · Ctrl+Shift+T 手动翻译
+              支持中英互译 · Ctrl+Shift+R 截图翻译 · Ctrl+Shift+T 手动翻译
             </p>
           </div>
         ) : (
@@ -116,6 +116,7 @@ export function FloatingBubble() {
             latencyMs={currentResult?.latencyMs ?? 0}
             isTranslating={isTranslating}
             error={translateError}
+            onRetry={hasTranslation ? onRetry : undefined}
           />
         )}
       </GlassCard>

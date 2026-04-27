@@ -8,6 +8,7 @@ import { useTranslationPipeline } from "./hooks/useTranslationPipeline";
 import { useUiaEventListener } from "./hooks/useUiaEventListener";
 import { useRegionSelector } from "./hooks/useRegionSelector";
 import { useSettingsStore } from "./stores/settingsStore";
+import { useTranslationStore } from "./stores/translationStore";
 import { useUiStore } from "./stores/uiStore";
 import { onOpenSettings } from "./lib/tauri-bridge";
 import "./App.css";
@@ -40,8 +41,16 @@ function BubbleApp() {
   }, [setSettings]);
   useUiaEventListener(pipeline.translate, loaded && enableUia, handleUiaError);
 
-  // 区域选择器（OCR 截图流程）
-  useRegionSelector();
+  // 区域选择器（OCR 截图 → 翻译 → 气泡显示）
+  useRegionSelector(pipeline.translate);
+
+  // 重试翻译（OCR 失败时无原文，不显示重试按钮）
+  const currentOriginal = useTranslationStore((s) => s.currentOriginal);
+  const handleRetry = useCallback(() => {
+    if (currentOriginal) {
+      pipeline.translate(currentOriginal);
+    }
+  }, [pipeline.translate, currentOriginal]);
 
   const loadSettings = useSettingsStore((s) => s.loadSettings);
   const openSettings = useUiStore((s) => s.openSettings);
@@ -71,7 +80,7 @@ function BubbleApp() {
 
   return (
     <div className="app">
-      <FloatingBubble />
+      <FloatingBubble onRetry={handleRetry} />
       <Sidebar />
       <Settings />
     </div>
