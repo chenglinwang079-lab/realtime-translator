@@ -13,6 +13,8 @@ import {
   deleteApiKey,
   registerShortcut,
   unregisterShortcut,
+  getOcrEngines,
+  testOcrEngine,
 } from "../../lib/tauri-bridge";
 import "./settings.css";
 
@@ -33,6 +35,7 @@ export function Settings() {
 
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const [engines, setEngines] = useState<Engine[]>([]);
+  const [ocrEngines, setOcrEngines] = useState<Engine[]>([]);
 
   // 加载引擎列表
   useEffect(() => {
@@ -40,6 +43,9 @@ export function Settings() {
       getEngines()
         .then(setEngines)
         .catch((err) => console.error("Failed to load engines:", err));
+      getOcrEngines()
+        .then(setOcrEngines)
+        .catch((err) => console.error("Failed to load OCR engines:", err));
     }
   }, [settingsOpen]);
 
@@ -119,12 +125,19 @@ export function Settings() {
     return await testEngine(engineId);
   }, []);
 
+  const handleTestOcrEngine = useCallback(async (engineId: string) => {
+    const latencyMs = await testOcrEngine(engineId);
+    return { success: true, latencyMs };
+  }, []);
+
   const handleSaveApiKey = useCallback(
     async (engineId: string, apiKey: string, extra?: string) => {
       await saveApiKey(engineId, apiKey, extra);
       // 重新加载引擎列表
       const updatedEngines = await getEngines();
       setEngines(updatedEngines);
+      const updatedOcr = await getOcrEngines();
+      setOcrEngines(updatedOcr);
     },
     []
   );
@@ -134,6 +147,8 @@ export function Settings() {
     // 重新加载引擎列表
     const updatedEngines = await getEngines();
     setEngines(updatedEngines);
+    const updatedOcr = await getOcrEngines();
+    setOcrEngines(updatedOcr);
   }, []);
 
   // 快捷键设置变更
@@ -244,14 +259,26 @@ export function Settings() {
           )}
 
           {activeTab === "engine" && (
-            <EngineConfig
-              engines={engines}
-              defaultEngine={settings.defaultEngine}
-              onDefaultEngineChange={handleDefaultEngineChange}
-              onTestEngine={handleTestEngine}
-              onSaveApiKey={handleSaveApiKey}
-              onDeleteApiKey={handleDeleteApiKey}
-            />
+            <>
+              <EngineConfig
+                engines={engines}
+                defaultEngine={settings.defaultEngine}
+                onDefaultEngineChange={handleDefaultEngineChange}
+                onTestEngine={handleTestEngine}
+                onSaveApiKey={handleSaveApiKey}
+                onDeleteApiKey={handleDeleteApiKey}
+              />
+              <EngineConfig
+                engines={ocrEngines}
+                defaultEngine=""
+                title="OCR 引擎"
+                showDefaultSelector={false}
+                onDefaultEngineChange={() => {}}
+                onTestEngine={handleTestOcrEngine}
+                onSaveApiKey={handleSaveApiKey}
+                onDeleteApiKey={handleDeleteApiKey}
+              />
+            </>
           )}
 
           {activeTab === "shortcut" && (

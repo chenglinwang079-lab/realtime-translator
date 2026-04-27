@@ -16,6 +16,12 @@ html {
   text-rendering: optimizeLegibility;
 }
 
+/* selector 窗口：全透明，让 Tauri 原生透明层穿透 */
+html.transparent-window,
+html.transparent-window body {
+  background: transparent !important;
+}
+
 body {
   font-family: var(--font-sans);
   font-size: var(--text-base);

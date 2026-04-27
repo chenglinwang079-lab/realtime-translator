@@ -45,7 +45,10 @@ pub async fn ocr_recognize(
     })
     .await
     .map_err(|_| "[OCR_TIMEOUT] OCR 识别超时".to_string())?
-    .map_err(|e| format!("[OCR] {}", e));
+    .map_err(|e| {
+        log::error!("OCR 主引擎 {} 失败: {}", primary_id, e);
+        format!("[OCR] {}", e)
+    });
 
     // 3. 主引擎失败 → 尝试 fallback（同样无锁）
     match result {

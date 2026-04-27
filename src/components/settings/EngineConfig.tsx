@@ -9,6 +9,8 @@ interface Engine {
 interface EngineConfigProps {
   engines: Engine[];
   defaultEngine: string;
+  title?: string;
+  showDefaultSelector?: boolean;
   onDefaultEngineChange: (engineId: string) => void;
   onTestEngine: (engineId: string) => Promise<{ success: boolean; latencyMs: number }>;
   onSaveApiKey: (engineId: string, apiKey: string, extra?: string) => Promise<void>;
@@ -18,6 +20,8 @@ interface EngineConfigProps {
 export function EngineConfig({
   engines,
   defaultEngine,
+  title = "翻译引擎",
+  showDefaultSelector = true,
   onDefaultEngineChange,
   onTestEngine,
   onSaveApiKey,
@@ -77,10 +81,11 @@ export function EngineConfig({
 
   return (
     <div className="settings-section">
-      <h3 className="settings-section__title">翻译引擎</h3>
+      <h3 className="settings-section__title">{title}</h3>
 
       {/* 默认引擎选择 */}
-      <div className="settings-item">
+      {showDefaultSelector && (
+        <div className="settings-item">
         <div className="settings-item__info">
           <label className="settings-item__label" htmlFor="default-engine">
             默认引擎
@@ -100,6 +105,7 @@ export function EngineConfig({
           ))}
         </select>
       </div>
+      )}
 
       {/* 引擎列表 */}
       <div className="engine-list">

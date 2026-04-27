@@ -19,8 +19,7 @@ const windowLabel = getCurrentWindow().label;
 function App() {
   // selector 窗口：透明背景 + 只渲染 RegionSelector
   if (windowLabel === "selector") {
-    document.documentElement.style.background = "transparent";
-    document.body.style.background = "transparent";
+    document.documentElement.classList.add("transparent-window");
     return <RegionSelector />;
   }
 
