@@ -1,4 +1,6 @@
 mod accessibility;
+mod audio;
+mod asr;
 mod clipboard;
 mod commands;
 mod db;
@@ -70,6 +72,9 @@ pub fn run() {
             commands::ocr::ocr_recognize,
             commands::ocr::get_ocr_engines,
             commands::ocr::test_ocr_engine,
+            commands::audio::start_live_audio_translation,
+            commands::audio::stop_live_audio_translation,
+            commands::audio::get_live_audio_state,
             commands::uninstall::uninstall_app,
         ])
         .setup(|app| {
@@ -230,6 +235,19 @@ pub fn run() {
             let watcher = clipboard::watcher::ClipboardWatcher::new();
             app.manage(watcher);
             log::info!("剪贴板 watcher 已初始化（等待前端启动）");
+
+            // 初始化系统音频捕获
+            let audio_capture = Arc::new(Mutex::new(
+                audio::SystemAudioCapture::new(audio::capture::AudioCaptureConfig::default())
+                    .expect("初始化系统音频捕获失败"),
+            ));
+            app.manage(audio_capture);
+            log::info!("系统音频捕获已初始化");
+
+            // 初始化实时音频翻译状态
+            let live_audio_state = Arc::new(commands::audio::LiveAudioState::new());
+            app.manage(live_audio_state);
+            log::info!("实时音频翻译状态已初始化");
 
             app.manage(db);
 

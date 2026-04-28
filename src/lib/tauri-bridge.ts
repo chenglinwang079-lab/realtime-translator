@@ -343,3 +343,56 @@ export async function testOcrEngine(engineId: string): Promise<number> {
 export async function uninstallApp(): Promise<void> {
   return invoke('uninstall_app');
 }
+
+// === Live Audio Translation ===
+
+export async function startLiveAudioTranslation(): Promise<void> {
+  return invoke('start_live_audio_translation');
+}
+
+export async function stopLiveAudioTranslation(): Promise<void> {
+  return invoke('stop_live_audio_translation');
+}
+
+export async function getLiveAudioState(): Promise<boolean> {
+  return invoke('get_live_audio_state');
+}
+
+export interface LiveTranscriptPayload {
+  text: string;
+  language: string | null;
+  confidence: number;
+  latencyMs: number;
+  isFinal: boolean;
+  chunkId: number;
+  timestampMs: number;
+  durationMs: number | null;
+}
+
+export function onLiveTranscript(
+  callback: (event: LiveTranscriptPayload) => void
+): Promise<UnlistenFn> {
+  return listen<LiveTranscriptPayload>("live-transcript", (e) => callback(e.payload));
+}
+
+export interface LiveTranslationError {
+  error: string;
+  recoverable: boolean;
+}
+
+export function onLiveTranslationError(
+  callback: (event: LiveTranslationError) => void
+): Promise<UnlistenFn> {
+  return listen<LiveTranslationError>("live-translation-error", (e) => callback(e.payload));
+}
+
+export interface LiveTranslationState {
+  isActive: boolean;
+  durationMs: number;
+}
+
+export function onLiveTranslationStateChanged(
+  callback: (event: LiveTranslationState) => void
+): Promise<UnlistenFn> {
+  return listen<LiveTranslationState>("live-translation-state-changed", (e) => callback(e.payload));
+}

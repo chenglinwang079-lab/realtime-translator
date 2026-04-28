@@ -1,4 +1,5 @@
 pub mod accessibility;
+pub mod audio;
 pub mod clipboard;
 pub mod history;
 pub mod ocr;

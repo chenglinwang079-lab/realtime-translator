@@ -12,6 +12,7 @@ import {
   showRegionSelector,
   type UiaTextCapturedEvent,
 } from "../../lib/tauri-bridge";
+import { useLiveTranslation } from "../../hooks/useLiveTranslation";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import "./sidebar.css";
 
@@ -48,6 +49,17 @@ export function Sidebar() {
 
   // PoC 3: 通过 UIA 抓取其他应用的选中文本
   const [uiaError, setUiaError] = useState("");
+
+  // 实时音频翻译
+  const {
+    isActive: isLiveActive,
+    transcript: liveTranscript,
+    translation: liveTranslation,
+    source: liveSource,
+    error: liveError,
+    start: startLiveTranslation,
+    stop: stopLiveTranslation,
+  } = useLiveTranslation();
   const [isGrabbing, setIsGrabbing] = useState(false);
 
   // 侧边栏打开/关闭时调整窗口宽度（保持当前高度）
@@ -406,6 +418,33 @@ export function Sidebar() {
         <span>截图翻译 Ctrl+Shift+R</span>
       </div>
 
+      {/* 实时翻译区 */}
+      <div className="sidebar__live-section">
+        <button
+          className={`sidebar__live-btn ${isLiveActive ? "sidebar__live-btn--active" : ""}`}
+          onClick={isLiveActive ? stopLiveTranslation : startLiveTranslation}
+          type="button"
+        >
+          {isLiveActive ? "停止实时翻译" : "开始实时翻译"}
+        </button>
+
+        {isLiveActive && (
+          <div className="sidebar__live-status">
+            <span className="sidebar__live-indicator" />
+            实时翻译中...
+            {liveTranscript && <span className="sidebar__live-transcript">{liveTranscript}</span>}
+          </div>
+        )}
+
+        {liveError && (
+          <div className="sidebar__live-error">{liveError}</div>
+        )}
+
+        {liveSource === "live" && liveTranslation && (
+          <div className="sidebar__source-tag">来源：实时音频</div>
+        )}
+      </div>
+
       {uiaError && (
         <div className="sidebar__uia-error">{uiaError}</div>
       )}
@@ -413,11 +452,11 @@ export function Sidebar() {
       {/* 结果区 */}
       <div className="sidebar__output-section">
         <TranslationOutput
-          translatedText={currentResult?.translatedText ?? ""}
+          translatedText={liveTranslation?.translatedText ?? currentResult?.translatedText ?? ""}
           isTranslating={isTranslating}
-          error={translateError}
-          engineId={currentResult?.engineId}
-          latencyMs={currentResult?.latencyMs}
+          error={liveError ?? translateError}
+          engineId={liveTranslation?.engineId ?? currentResult?.engineId}
+          latencyMs={liveTranslation?.latencyMs ?? currentResult?.latencyMs}
           onRetry={currentOriginal ? handleTranslate : undefined}
         />
       </div>
