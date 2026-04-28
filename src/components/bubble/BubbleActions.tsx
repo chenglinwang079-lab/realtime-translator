@@ -3,6 +3,7 @@ import { useCallback } from "react";
 interface BubbleActionsProps {
   translatedText: string;
   onPin: () => void;
+  onMinimize?: () => void;
   onClose: () => void;
   onOpenSidebar: () => void;
   onOpenSettings: () => void;
@@ -11,6 +12,7 @@ interface BubbleActionsProps {
 export function BubbleActions({
   translatedText,
   onPin,
+  onMinimize,
   onClose,
   onOpenSidebar,
   onOpenSettings,
@@ -47,6 +49,19 @@ export function BubbleActions({
           <circle cx="12" cy="3" r="2" />
         </svg>
       </button>
+
+      {onMinimize && (
+        <button
+          className="bubble-actions__btn"
+          onClick={onMinimize}
+          title="最小化窗口"
+          aria-label="最小化窗口"
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <line x1="5" y1="12" x2="19" y2="12" />
+          </svg>
+        </button>
+      )}
 
       <button
         className="bubble-actions__btn"

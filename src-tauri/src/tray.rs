@@ -100,6 +100,7 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
                     // 显示主窗口
                     log::info!("[Tray] 显示主窗口");
                     if let Some(window) = app.get_webview_window("bubble") {
+                        let _ = window.unminimize();
                         let _ = window.show();
                         let _ = window.set_focus();
                     }
@@ -125,6 +126,7 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
                         if window.is_visible().unwrap_or(false) {
                             let _ = window.hide();
                         } else {
+                            let _ = window.unminimize();
                             let _ = window.show();
                             let _ = window.set_focus();
                         }

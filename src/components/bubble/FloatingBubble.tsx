@@ -37,6 +37,14 @@ export function FloatingBubble({ onRetry }: { onRetry?: () => void }) {
     toggleSidebar();
   }, [setBubbleState, toggleSidebar]);
 
+  const handleMinimize = useCallback(async () => {
+    try {
+      await getCurrentWindow().minimize();
+    } catch {
+      // ignore
+    }
+  }, []);
+
   const handleOpenSidebar = useCallback(() => {
     toggleSidebar();
   }, [toggleSidebar]);
@@ -85,6 +93,7 @@ export function FloatingBubble({ onRetry }: { onRetry?: () => void }) {
           <BubbleActions
             translatedText={currentResult?.translatedText ?? ""}
             onPin={handlePin}
+            onMinimize={handleMinimize}
             onClose={handleClose}
             onOpenSidebar={handleOpenSidebar}
             onOpenSettings={openSettings}
