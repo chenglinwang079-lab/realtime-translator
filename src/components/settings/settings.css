@@ -27,7 +27,31 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  animation: modalIn var(--duration-slow) var(--ease-out);
+  animation: settings-in var(--duration-slow) var(--ease-out);
+  position: relative;
+}
+
+/* Subtle gradient overlay on modal */
+.settings-modal::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse at 50% 0%, rgba(232, 179, 78, 0.03) 0%, transparent 40%),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.02) 0%, transparent 20%);
+  pointer-events: none;
+  z-index: 0;
+}
+
+@keyframes settings-in {
+  from {
+    opacity: 0;
+    transform: translateY(16px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }
 
 .settings-modal__header {
@@ -36,6 +60,8 @@
   justify-content: space-between;
   padding: var(--space-5) var(--space-6);
   border-bottom: 1px solid var(--color-border);
+  position: relative;
+  z-index: 1;
 }
 
 .settings-modal__title {

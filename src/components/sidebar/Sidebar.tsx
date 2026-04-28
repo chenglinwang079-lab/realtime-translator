@@ -327,87 +327,100 @@ export function Sidebar() {
         onSwap={handleSwapLanguages}
       />
 
-      {/* 输入区域 */}
-      <TextInput
-        value={inputText}
-        onChange={setInputText}
-        onTranslate={handleTranslate}
-        disabled={isTranslating}
-      />
+      {/* 输入区 */}
+      <div className="sidebar__input-section">
+        <TextInput
+          value={inputText}
+          onChange={setInputText}
+          onTranslate={handleTranslate}
+          disabled={isTranslating}
+        />
+      </div>
 
-      {/* 翻译按钮 */}
-      <button
-        className="sidebar__translate-btn"
-        onClick={handleTranslate}
-        disabled={!inputText.trim() || isTranslating}
-        type="button"
-      >
-        {isTranslating ? (
-          <span className="sidebar__translate-btn-loading">
-            <span className="dot-pulse" />
-            翻译中
-          </span>
-        ) : (
-          "翻译"
-        )}
-      </button>
-
-      {/* PoC 3: UIA 抓取按钮 */}
-      <button
-        className={`sidebar__grab-btn ${isGrabbing ? "sidebar__grab-btn--loading" : ""}`}
-        onClick={handleGrabText}
-        disabled={isGrabbing}
-        type="button"
-        title="通过 Windows UI Automation 抓取其他应用中选中的文本（快捷键: Ctrl+Shift+G）"
-      >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
+      {/* 主操作区 */}
+      <div className="sidebar__primary-actions">
+        <button
+          className="sidebar__translate-btn"
+          onClick={handleTranslate}
+          disabled={!inputText.trim() || isTranslating}
+          type="button"
         >
-          <path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" />
-        </svg>
-        {isGrabbing ? "抓取中..." : "抓取选中文本 (Ctrl+Shift+G)"}
-      </button>
+          {isTranslating ? (
+            <span className="sidebar__translate-btn-loading">
+              <span className="dot-pulse" />
+              翻译中
+            </span>
+          ) : (
+            "翻译"
+          )}
+        </button>
+      </div>
+
+      {/* 辅助操作区 */}
+      <div className="sidebar__secondary-actions">
+        <button
+          className={`sidebar__grab-btn ${isGrabbing ? "sidebar__grab-btn--loading" : ""}`}
+          onClick={handleGrabText}
+          disabled={isGrabbing}
+          type="button"
+          title="通过 Windows UI Automation 抓取其他应用中选中的文本"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" />
+          </svg>
+          <span>{isGrabbing ? "抓取中..." : "抓取文本"}</span>
+        </button>
+        <button
+          className={`sidebar__ocr-btn ${ocrProcessing ? "sidebar__ocr-btn--loading" : ""}`}
+          onClick={() => showRegionSelector()}
+          disabled={screenOcrBusy}
+          type="button"
+          title="框选屏幕区域进行 OCR 截图翻译"
+        >
+          <svg
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+          >
+            <rect x="3" y="3" width="18" height="18" rx="2" />
+            <circle cx="8.5" cy="8.5" r="1.5" />
+            <path d="M21 15l-5-5L5 21" />
+          </svg>
+          <span>{ocrProcessing ? "识别中..." : isTranslating ? "翻译中..." : "截图翻译"}</span>
+        </button>
+      </div>
+
+      {/* 辅助说明区 */}
+      <div className="sidebar__shortcut-hints">
+        <span>抓取文本 Ctrl+Shift+G</span>
+        <span>截图翻译 Ctrl+Shift+R</span>
+      </div>
+
       {uiaError && (
         <div className="sidebar__uia-error">{uiaError}</div>
       )}
 
-      {/* 截图翻译按钮 */}
-      <button
-        className={`sidebar__ocr-btn ${ocrProcessing ? "sidebar__ocr-btn--loading" : ""}`}
-        onClick={() => showRegionSelector()}
-        disabled={screenOcrBusy}
-        type="button"
-        title="框选屏幕区域进行 OCR 截图翻译（快捷键: Ctrl+Shift+R）"
-      >
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <rect x="3" y="3" width="18" height="18" rx="2" />
-          <circle cx="8.5" cy="8.5" r="1.5" />
-          <path d="M21 15l-5-5L5 21" />
-        </svg>
-        {ocrProcessing ? "识别中..." : isTranslating ? "翻译中..." : "截图翻译 (Ctrl+Shift+R)"}
-      </button>
-
-      {/* 翻译结果 */}
-      <TranslationOutput
-        translatedText={currentResult?.translatedText ?? ""}
-        isTranslating={isTranslating}
-        error={translateError}
-        engineId={currentResult?.engineId}
-        latencyMs={currentResult?.latencyMs}
-        onRetry={currentOriginal ? handleTranslate : undefined}
-      />
+      {/* 结果区 */}
+      <div className="sidebar__output-section">
+        <TranslationOutput
+          translatedText={currentResult?.translatedText ?? ""}
+          isTranslating={isTranslating}
+          error={translateError}
+          engineId={currentResult?.engineId}
+          latencyMs={currentResult?.latencyMs}
+          onRetry={currentOriginal ? handleTranslate : undefined}
+        />
+      </div>
 
       {/* 文件拖入提示 */}
       <div className="sidebar__drop-hint">
