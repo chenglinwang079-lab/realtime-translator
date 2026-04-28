@@ -339,3 +339,7 @@ export async function getOcrEngines(): Promise<EngineInfo[]> {
 export async function testOcrEngine(engineId: string): Promise<number> {
   return invoke<number>('test_ocr_engine', { engineId });
 }
+
+export async function uninstallApp(): Promise<void> {
+  return invoke('uninstall_app');
+}

@@ -70,6 +70,7 @@ pub fn run() {
             commands::ocr::ocr_recognize,
             commands::ocr::get_ocr_engines,
             commands::ocr::test_ocr_engine,
+            commands::uninstall::uninstall_app,
         ])
         .setup(|app| {
             // 初始化日志（必须在所有模块初始化之前）
@@ -245,11 +246,22 @@ pub fn run() {
                 log::error!("系统托盘创建失败: {}", e);
             }
 
-            let window = app.get_webview_window("bubble").unwrap();
-            window.show().unwrap();
-            window.set_always_on_top(true).unwrap();
-            let _ = window.set_ignore_cursor_events(false);
-            let _ = window.set_focus();
+            if let Some(window) = app.get_webview_window("bubble") {
+                if let Err(e) = window.show() {
+                    log::error!("显示 bubble 窗口失败: {}", e);
+                }
+                if let Err(e) = window.set_always_on_top(true) {
+                    log::error!("设置置顶失败: {}", e);
+                }
+                if let Err(e) = window.set_ignore_cursor_events(false) {
+                    log::warn!("设置穿透鼠标事件失败: {}", e);
+                }
+                if let Err(e) = window.set_focus() {
+                    log::warn!("设置焦点失败: {}", e);
+                }
+            } else {
+                log::error!("找不到 bubble 窗口");
+            }
             Ok(())
         })
         .run(tauri::generate_context!())

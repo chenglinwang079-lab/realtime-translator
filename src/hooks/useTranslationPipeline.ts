@@ -9,8 +9,8 @@ import {
   showBubbleWindow,
   saveHistory,
   getHistory,
-  type TranslationResult,
 } from "../lib/tauri-bridge";
+import { friendlyMessage } from "../lib/errorMessages";
 
 /**
  * 剪贴板翻译管道 hook
@@ -19,7 +19,6 @@ import {
 export function useTranslationPipeline() {
   const lastTranslatedRef = useRef("");
 
-  const setCurrentOriginal = useTranslationStore((s) => s.setCurrentOriginal);
   const setCurrentResult = useTranslationStore((s) => s.setCurrentResult);
   const setTranslating = useTranslationStore((s) => s.setTranslating);
   const setTranslateError = useTranslationStore((s) => s.setTranslateError);
@@ -34,10 +33,13 @@ export function useTranslationPipeline() {
       if (text === lastTranslatedRef.current) return;
       lastTranslatedRef.current = text;
 
-      setCurrentOriginal(text);
-      setCurrentResult(null as unknown as TranslationResult);
-      setTranslateError("");
-      setTranslating(true);
+      // 合并为单次 store 更新，避免 4 次独立 set 导致多次 re-render
+      useTranslationStore.setState({
+        currentOriginal: text,
+        currentResult: null,
+        translateError: "",
+        isTranslating: true,
+      });
       setBubbleState("interactive");
 
       try {
@@ -61,13 +63,13 @@ export function useTranslationPipeline() {
           timestamp: new Date(entry.timestamp).toISOString(),
         }).catch((e) => console.error("保存历史失败:", e));
       } catch (e) {
-        setTranslateError(String(e));
+        const msg = e instanceof Error ? e.message : String(e);
+        setTranslateError(friendlyMessage(msg));
       } finally {
         setTranslating(false);
       }
     },
     [
-      setCurrentOriginal,
       setCurrentResult,
       setTranslating,
       setTranslateError,

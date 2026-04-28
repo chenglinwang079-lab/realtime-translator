@@ -1,4 +1,4 @@
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 use anyhow::{bail, Context};
 use reqwest::Client;
@@ -54,6 +54,8 @@ impl OpenAiEngine {
     pub fn new_with_key(api_key: String) -> anyhow::Result<Self> {
         let client = Client::builder()
             .use_rustls_tls()
+            .connect_timeout(Duration::from_secs(10))
+            .timeout(Duration::from_secs(30))
             .build()
             .context("创建 HTTP client 失败")?;
 

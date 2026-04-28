@@ -15,10 +15,12 @@ import {
   unregisterShortcut,
   getOcrEngines,
   testOcrEngine,
+  uninstallApp,
 } from "../../lib/tauri-bridge";
+import { getVersion } from "@tauri-apps/api/app";
 import "./settings.css";
 
-type SettingsTab = "general" | "engine" | "shortcut" | "language";
+type SettingsTab = "general" | "engine" | "shortcut" | "language" | "about";
 
 interface Engine {
   id: string;
@@ -36,6 +38,8 @@ export function Settings() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("general");
   const [engines, setEngines] = useState<Engine[]>([]);
   const [ocrEngines, setOcrEngines] = useState<Engine[]>([]);
+  const [appVersion, setAppVersion] = useState("");
+  const [uninstallConfirm, setUninstallConfirm] = useState(false);
 
   // 加载引擎列表
   useEffect(() => {
@@ -46,6 +50,11 @@ export function Settings() {
       getOcrEngines()
         .then(setOcrEngines)
         .catch((err) => console.error("Failed to load OCR engines:", err));
+      getVersion()
+        .then(setAppVersion)
+        .catch(() => {});
+      setUninstallConfirm(false);
+      setUninstallError(null);
     }
   }, [settingsOpen]);
 
@@ -186,6 +195,19 @@ export function Settings() {
     [setSettings]
   );
 
+  const [uninstallError, setUninstallError] = useState<string | null>(null);
+
+  // 卸载
+  const handleUninstall = useCallback(async () => {
+    setUninstallError(null);
+    try {
+      await uninstallApp();
+    } catch (err) {
+      const msg = typeof err === "string" ? err : "卸载失败，请手动运行卸载程序";
+      setUninstallError(msg);
+    }
+  }, []);
+
   if (!settingsOpen) {
     return null;
   }
@@ -195,6 +217,7 @@ export function Settings() {
     { id: "engine", label: "引擎" },
     { id: "shortcut", label: "快捷键" },
     { id: "language", label: "语言" },
+    { id: "about", label: "关于" },
   ];
 
   return (
@@ -295,6 +318,61 @@ export function Settings() {
               onSourceLangChange={handleSourceLangChange}
               onTargetLangChange={handleTargetLangChange}
             />
+          )}
+
+          {activeTab === "about" && (
+            <div className="settings-about">
+              <div className="settings-about__info">
+                <h3 className="settings-about__name">RealtimeTranslator</h3>
+                <p className="settings-about__version">版本 {appVersion}</p>
+                <p className="settings-about__desc">
+                  实时翻译工具 — 支持剪贴板监听、划词翻译、截图 OCR 翻译
+                </p>
+              </div>
+
+              <div className="settings-about__danger">
+                <h4 className="settings-about__danger-title">危险操作</h4>
+                {!uninstallConfirm ? (
+                  <button
+                    className="settings-about__uninstall-btn"
+                    onClick={() => setUninstallConfirm(true)}
+                    type="button"
+                  >
+                    卸载应用
+                  </button>
+                ) : (
+                  <div className="settings-about__uninstall-confirm">
+                    <p className="settings-about__uninstall-warn">
+                      将关闭应用并启动卸载程序，是否继续？
+                    </p>
+                    <div className="settings-about__uninstall-actions">
+                      <button
+                        className="settings-about__uninstall-confirm-btn"
+                        onClick={handleUninstall}
+                        type="button"
+                      >
+                        确认卸载
+                      </button>
+                      <button
+                        className="settings-about__uninstall-cancel"
+                        onClick={() => {
+                        setUninstallConfirm(false);
+                        setUninstallError(null);
+                      }}
+                        type="button"
+                      >
+                        取消
+                      </button>
+                    </div>
+                    {uninstallError && (
+                      <p className="settings-about__uninstall-error">
+                        {uninstallError}
+                      </p>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
           )}
         </div>
       </div>

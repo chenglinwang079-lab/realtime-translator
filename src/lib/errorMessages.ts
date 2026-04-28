@@ -26,6 +26,24 @@ const PREFIX_MAP: [string, string][] = [
   ["[OCR] 百度 OCR 请求失败", "网络连接失败，请检查网络"],
   ["[OCR] 百度 OCR 错误", "百度 OCR 识别失败，请重试"],
   ["[OCR]", "OCR 识别失败，请重试"],
+  // 翻译引擎错误（更具体的在前）
+  ["[TRANSLATE_INPUT]", "请输入要翻译的文字"],
+  ["[TRANSLATE_LENGTH]", "翻译文本过长，请缩短后重试"],
+  ["[TRANSLATE_ENGINE]", "翻译引擎未配置，请在设置中配置 API Key"],
+  ["[TRANSLATE] 翻译请求超时，请稍后重试", "翻译请求超时，请稍后重试"],
+  ["[TRANSLATE] DeepL API 错误 (401)", "DeepL API Key 无效，请检查设置"],
+  ["[TRANSLATE] DeepL API 错误 (429)", "DeepL 翻译次数超限，请稍后重试"],
+  ["[TRANSLATE] DeepL API 错误 (5", "DeepL 服务暂时不可用，请稍后重试"],
+  ["[TRANSLATE] DeepL API 请求失败", "网络连接失败，请检查网络"],
+  ["[TRANSLATE] OpenAI API 错误 (401)", "OpenAI API Key 无效，请检查设置"],
+  ["[TRANSLATE] OpenAI API 错误 (429)", "OpenAI 调用次数超限，请稍后重试"],
+  ["[TRANSLATE] OpenAI API 错误 (5", "OpenAI 服务暂时不可用，请稍后重试"],
+  ["[TRANSLATE] OpenAI API 请求失败", "网络连接失败，请检查网络"],
+  ["[TRANSLATE] 腾讯云 API HTTP 错误 (4", "腾讯云 API 请求错误，请检查设置"],
+  ["[TRANSLATE] 腾讯云 API HTTP 错误 (5", "腾讯云服务暂时不可用，请稍后重试"],
+  ["[TRANSLATE] 腾讯云 API 请求失败", "网络连接失败，请检查网络"],
+  ["[TRANSLATE] 腾讯云 API 错误", "腾讯云翻译失败，请检查设置"],
+  ["[TRANSLATE]", "翻译失败，请重试"],
 ];
 
 /** 兼容无前缀的旧错误（过渡期） */

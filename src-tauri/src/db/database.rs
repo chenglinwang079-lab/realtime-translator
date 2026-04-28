@@ -92,6 +92,15 @@ impl Database {
         Ok(row.map(|(v,)| v))
     }
 
+    /// 批量获取所有设置（减少 N 次独立查询的连接开销）
+    pub async fn get_all_settings(&self) -> Result<Vec<(String, String)>> {
+        let rows: Vec<(String, String)> =
+            sqlx::query_as("SELECT key, value FROM settings")
+                .fetch_all(&self.pool)
+                .await?;
+        Ok(rows)
+    }
+
     pub async fn set_setting(&self, key: &str, value: &str) -> Result<()> {
         sqlx::query(
             "INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value",

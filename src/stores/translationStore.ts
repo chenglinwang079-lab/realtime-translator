@@ -24,7 +24,7 @@ interface TranslationState {
 
   // Actions
   setCurrentOriginal: (text: string) => void;
-  setCurrentResult: (result: TranslationResult) => void;
+  setCurrentResult: (result: TranslationResult | null) => void;
   setTranslating: (loading: boolean) => void;
   setTranslateError: (error: string) => void;
   clearCurrent: () => void;

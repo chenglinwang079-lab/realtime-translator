@@ -59,8 +59,14 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
     let _app_handle = app.clone();
 
     // 构建托盘图标
+    let icon = app.default_window_icon()
+        .ok_or_else(|| tauri::Error::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "应用图标未配置",
+        )))?
+        .clone();
     let _tray = TrayIconBuilder::new()
-        .icon(app.default_window_icon().unwrap().clone())
+        .icon(icon)
         .menu(&menu)
         .tooltip("RealtimeTranslator")
         .on_menu_event(move |app, event| {
@@ -79,11 +85,11 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
                     });
                     let new_state = !is_running;
                     let _ = app.emit("watch-state-changed", new_state);
-                    println!("[Tray] 监听状态切换为: {}", if new_state { "监听中" } else { "已暂停" });
+                    log::info!("[Tray] 监听状态切换为: {}", if new_state { "监听中" } else { "已暂停" });
                 }
                 "open_settings" => {
                     // 打开设置面板
-                    println!("[Tray] 打开设置");
+                    log::info!("[Tray] 打开设置");
                     if let Some(window) = app.get_webview_window("bubble") {
                         let _ = window.show();
                         let _ = window.set_focus();
@@ -92,7 +98,7 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
                 }
                 "show_window" => {
                     // 显示主窗口
-                    println!("[Tray] 显示主窗口");
+                    log::info!("[Tray] 显示主窗口");
                     if let Some(window) = app.get_webview_window("bubble") {
                         let _ = window.show();
                         let _ = window.set_focus();
@@ -100,7 +106,7 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
                 }
                 "quit" => {
                     // 退出应用
-                    println!("[Tray] 退出应用");
+                    log::info!("[Tray] 退出应用");
                     app.exit(0);
                 }
                 _ => {}
@@ -136,7 +142,7 @@ pub fn create_tray(app: &AppHandle) -> tauri::Result<()> {
 pub fn update_tray_menu(app: &AppHandle, is_watching: bool) {
     // TODO: 更新菜单项文本
     // 这需要更复杂的菜单管理，暂时跳过
-    println!(
+    log::info!(
         "[Tray] 更新状态: {}",
         if is_watching { "监听中" } else { "已暂停" }
     );

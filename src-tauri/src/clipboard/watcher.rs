@@ -66,11 +66,11 @@ impl ClipboardWatcher {
 
     pub async fn start(&self, app: AppHandle) {
         if self.inner.running.swap(true, Ordering::SeqCst) {
-            println!("[ClipboardWatcher] 已经在运行，跳过重复启动");
+            log::debug!("[ClipboardWatcher] 已经在运行，跳过重复启动");
             return;
         }
 
-        println!(
+        log::debug!(
             "[ClipboardWatcher] 启动剪贴板轮询 (间隔={}ms, 防抖={}ms, 长度限制={}-{})",
             self.inner.config.poll_interval_ms,
             self.inner.config.debounce_ms,
@@ -99,7 +99,7 @@ impl ClipboardWatcher {
             loop {
                 tokio::select! {
                     _ = &mut rx => {
-                        println!("[ClipboardWatcher] 收到停止信号");
+                        log::debug!("[ClipboardWatcher] 收到停止信号");
                         break;
                     }
                     _ = tokio::time::sleep(poll_interval) => {
@@ -185,8 +185,9 @@ impl ClipboardWatcher {
 fn should_translate(text: &str, config: &WatcherConfig) -> bool {
     let trimmed = text.trim();
 
-    // 长度检查
-    if trimmed.len() < config.min_text_length || trimmed.len() > config.max_text_length {
+    // 长度检查（按字符数，非字节数，避免 CJK 文本被错误拒绝）
+    let char_count = trimmed.chars().count();
+    if char_count < config.min_text_length || char_count > config.max_text_length {
         return false;
     }
 
@@ -232,7 +233,7 @@ fn unicode_is_punctuation(c: char) -> bool {
 
 /// 发送剪贴板变化事件
 fn emit_clipboard_changed(app: &AppHandle, text: &str) {
-    println!("[ClipboardWatcher] 检测到剪贴板变化: {} 字符", text.len());
+    log::debug!("[ClipboardWatcher] 检测到剪贴板变化: {} 字符", text.len());
     let event = ClipboardChangedEvent {
         text: text.to_string(),
         source: "clipboard-watch".to_string(),

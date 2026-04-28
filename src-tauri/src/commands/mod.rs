@@ -7,3 +7,4 @@ pub mod selector;
 pub mod settings;
 pub mod shortcuts;
 pub mod translation;
+pub mod uninstall;

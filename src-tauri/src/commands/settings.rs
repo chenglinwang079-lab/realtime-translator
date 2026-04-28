@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 use serde::{Deserialize, Serialize};
 use tauri::State;
 
@@ -36,74 +38,25 @@ impl Default for AppSettings {
     }
 }
 
-/// 从数据库读取所有设置，缺失的字段使用默认值
+/// 从数据库读取所有设置，缺失的字段使用默认值（单次查询 + HashMap）
 #[tauri::command]
 pub async fn get_settings(db: State<'_, Database>) -> Result<AppSettings, String> {
     let defaults = AppSettings::default();
 
-    // 逐个读取设置项
-    let theme = db
-        .get_setting("theme")
-        .await
-        .map_err(|e| e.to_string())?
-        .unwrap_or_else(|| defaults.theme.clone());
+    let rows = db.get_all_settings().await.map_err(|e| e.to_string())?;
+    let map: HashMap<String, String> = rows.into_iter().collect();
 
-    let default_source_lang = db
-        .get_setting("defaultSourceLang")
-        .await
-        .map_err(|e| e.to_string())?
-        .unwrap_or_else(|| defaults.default_source_lang.clone());
+    let get = |key: &str| -> Option<String> { map.get(key).cloned() };
+    let get_bool = |key: &str, default: bool| -> bool {
+        get(key).and_then(|v| v.parse::<bool>().ok()).unwrap_or(default)
+    };
 
-    let default_target_lang = db
-        .get_setting("defaultTargetLang")
-        .await
-        .map_err(|e| e.to_string())?
-        .unwrap_or_else(|| defaults.default_target_lang.clone());
-
-    let default_engine = db
-        .get_setting("defaultEngine")
-        .await
-        .map_err(|e| e.to_string())?
-        .unwrap_or_else(|| defaults.default_engine.clone());
-
-    let auto_start = db
-        .get_setting("autoStart")
-        .await
-        .map_err(|e| e.to_string())?
-        .and_then(|v| v.parse::<bool>().ok())
-        .unwrap_or(defaults.auto_start);
-
-    let enable_history = db
-        .get_setting("enableHistory")
-        .await
-        .map_err(|e| e.to_string())?
-        .and_then(|v| v.parse::<bool>().ok())
-        .unwrap_or(defaults.enable_history);
-
-    let shortcut = db
-        .get_setting("shortcut")
-        .await
-        .map_err(|e| e.to_string())?
-        .unwrap_or_else(|| defaults.shortcut.clone());
-
-    let enable_uia_auto_translate = db
-        .get_setting("enableUiaAutoTranslate")
-        .await
-        .map_err(|e| e.to_string())?
-        .and_then(|v| v.parse::<bool>().ok())
-        .unwrap_or(defaults.enable_uia_auto_translate);
-
-    let uia_blacklist = db
-        .get_setting("uiaBlacklist")
-        .await
-        .map_err(|e| e.to_string())?
-        .and_then(|v| {
-            match serde_json::from_str::<Vec<String>>(&v) {
-                Ok(list) => Some(list),
-                Err(e) => {
-                    log::error!("uiaBlacklist 解析失败: {}", e);
-                    None
-                }
+    let uia_blacklist = get("uiaBlacklist")
+        .and_then(|v| match serde_json::from_str::<Vec<String>>(&v) {
+            Ok(list) => Some(list),
+            Err(e) => {
+                log::error!("uiaBlacklist 解析失败: {}", e);
+                None
             }
         })
         .unwrap_or_default();
@@ -119,14 +72,14 @@ pub async fn get_settings(db: State<'_, Database>) -> Result<AppSettings, String
     }
 
     Ok(AppSettings {
-        theme,
-        default_source_lang,
-        default_target_lang,
-        default_engine,
-        auto_start,
-        enable_history,
-        shortcut,
-        enable_uia_auto_translate,
+        theme: get("theme").unwrap_or(defaults.theme),
+        default_source_lang: get("defaultSourceLang").unwrap_or(defaults.default_source_lang),
+        default_target_lang: get("defaultTargetLang").unwrap_or(defaults.default_target_lang),
+        default_engine: get("defaultEngine").unwrap_or(defaults.default_engine),
+        auto_start: get_bool("autoStart", defaults.auto_start),
+        enable_history: get_bool("enableHistory", defaults.enable_history),
+        shortcut: get("shortcut").unwrap_or(defaults.shortcut),
+        enable_uia_auto_translate: get_bool("enableUiaAutoTranslate", defaults.enable_uia_auto_translate),
         uia_blacklist,
     })
 }
