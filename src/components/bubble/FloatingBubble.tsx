@@ -1,5 +1,5 @@
 import { useCallback, useEffect } from "react";
-import { GlassCard } from "./GlassCard";
+import { SurfaceCard } from "./SurfaceCard";
 import { TranslationResult as TranslationResultView } from "./TranslationResult";
 import { BubbleActions } from "./BubbleActions";
 import { useTranslationStore } from "../../stores/translationStore";
@@ -102,7 +102,7 @@ export function FloatingBubble({ onRetry }: { onRetry?: () => void }) {
       )}
 
       {/* 气泡内容 */}
-      <GlassCard className="floating-bubble__card">
+      <SurfaceCard className="floating-bubble__card">
         {!hasTranslation ? (
           <div className="floating-bubble__empty" onMouseDown={handleDragStart}>
             <p className="floating-bubble__hint">
@@ -138,7 +138,7 @@ export function FloatingBubble({ onRetry }: { onRetry?: () => void }) {
             onEngineSwitch={currentOriginal ? onRetry : undefined}
           />
         )}
-      </GlassCard>
+      </SurfaceCard>
     </div>
   );
 }

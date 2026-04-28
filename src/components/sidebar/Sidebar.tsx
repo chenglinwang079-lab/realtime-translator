@@ -176,6 +176,27 @@ export function Sidebar() {
     [width]
   );
 
+  // 键盘调整宽度
+  const handleResizeKeyDown = useCallback(
+    (e: React.KeyboardEvent) => {
+      const step = e.shiftKey ? 50 : 10; // Shift + Arrow 大步进
+      if (e.key === "ArrowLeft") {
+        e.preventDefault();
+        setWidth(Math.max(MIN_WIDTH, width - step));
+      } else if (e.key === "ArrowRight") {
+        e.preventDefault();
+        setWidth(Math.min(MAX_WIDTH, width + step));
+      } else if (e.key === "Home") {
+        e.preventDefault();
+        setWidth(MIN_WIDTH);
+      } else if (e.key === "End") {
+        e.preventDefault();
+        setWidth(MAX_WIDTH);
+      }
+    },
+    [width]
+  );
+
   // 文件拖入处理
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -263,7 +284,15 @@ export function Sidebar() {
       {/* 拖拽调整手柄 */}
       <div
         className="sidebar__resize-handle"
+        role="separator"
+        aria-orientation="vertical"
+        aria-label="调整侧边栏宽度"
+        aria-valuemin={MIN_WIDTH}
+        aria-valuemax={MAX_WIDTH}
+        aria-valuenow={width}
+        tabIndex={0}
         onMouseDown={handleResizeStart}
+        onKeyDown={handleResizeKeyDown}
       />
 
       {/* 侧边栏头部 */}

@@ -1,18 +1,18 @@
 import type { ReactNode } from "react";
 
-interface GlassCardProps {
+interface SurfaceCardProps {
   children: ReactNode;
   className?: string;
   padding?: boolean;
 }
 
-export function GlassCard({
+export function SurfaceCard({
   children,
   className = "",
   padding = true,
-}: GlassCardProps) {
+}: SurfaceCardProps) {
   return (
-    <div className={`glass-card ${padding ? "glass-card--padded" : ""} ${className}`}>
+    <div className={`surface-card ${padding ? "surface-card--padded" : ""} ${className}`}>
       {children}
     </div>
   );
