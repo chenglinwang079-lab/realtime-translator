@@ -3,6 +3,7 @@ use async_trait::async_trait;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::time::Instant;
+use uuid::Uuid;
 
 use super::engine::{AsrEngine, AsrResult};
 
@@ -43,6 +44,45 @@ impl AliyunAsrEngine {
 
         Ok(Self::new(app_key, access_key_id, access_key_secret))
     }
+
+    /// 生成 32 位唯一 ID
+    fn generate_id() -> String {
+        Uuid::new_v4().to_string().replace("-", "")
+    }
+
+    /// 将 f32 PCM 48000Hz 转换为 16bit PCM 16000Hz mono
+    fn convert_audio(pcm_f32: &[f32], sample_rate: u32) -> Vec<u8> {
+        // 如果采样率不是 16000，需要重采样
+        let pcm_resampled = if sample_rate != 16000 {
+            Self::resample(pcm_f32, sample_rate, 16000)
+        } else {
+            pcm_f32.to_vec()
+        };
+
+        // 转换为 16bit PCM
+        let mut result = Vec::with_capacity(pcm_resampled.len() * 2);
+        for &sample in &pcm_resampled {
+            let sample_i16 = (sample * 32767.0).max(-32768.0).min(32767.0) as i16;
+            result.extend_from_slice(&sample_i16.to_le_bytes());
+        }
+        result
+    }
+
+    /// 简单的线性重采样
+    fn resample(pcm: &[f32], from_rate: u32, to_rate: u32) -> Vec<f32> {
+        let ratio = from_rate as f64 / to_rate as f64;
+        let new_len = (pcm.len() as f64 / ratio) as usize;
+        let mut result = Vec::with_capacity(new_len);
+
+        for i in 0..new_len {
+            let src_idx = (i as f64 * ratio) as usize;
+            if src_idx < pcm.len() {
+                result.push(pcm[src_idx]);
+            }
+        }
+
+        result
+    }
 }
 
 #[async_trait]
@@ -62,8 +102,12 @@ impl AsrEngine for AliyunAsrEngine {
     async fn recognize(&self, audio: &[f32], sample_rate: u32) -> Result<AsrResult> {
         let start = Instant::now();
 
-        // 将 f32 PCM 转换为 16bit PCM
-        let pcm_16bit = convert_f32_to_i16(audio);
+        // 转换音频格式：f32 -> 16bit PCM, 重采样到 16000Hz mono
+        let pcm_16bit = Self::convert_audio(audio, sample_rate);
+
+        // 生成 task_id 和 message_id
+        let task_id = Self::generate_id();
+        let message_id = Self::generate_id();
 
         // 创建 multipart form
         let file_part = reqwest::multipart::Part::bytes(pcm_16bit)
@@ -73,11 +117,14 @@ impl AsrEngine for AliyunAsrEngine {
         let form = reqwest::multipart::Form::new()
             .part("file", file_part)
             .text("appkey", self.app_key.clone())
+            .text("task_id", task_id)
+            .text("message_id", message_id)
             .text("format", "pcm")
-            .text("sample_rate", sample_rate.to_string());
+            .text("sample_rate", "16000")
+            .text("enable_punctuation_prediction", "true")
+            .text("enable_inverse_text_normalization", "true");
 
         // 发送请求到阿里云 ASR API
-        // 注意：这里使用 RESTful API，实际生产环境建议使用 WebSocket
         let url = "https://nls-gateway.cn-shanghai.aliyuncs.com/stream/v1/asr";
 
         let response = self
@@ -121,15 +168,4 @@ impl AsrEngine for AliyunAsrEngine {
 struct AliyunAsrResponse {
     result: Option<String>,
     confidence: Option<f32>,
-}
-
-/// 将 f32 PCM 转换为 16bit PCM
-fn convert_f32_to_i16(pcm: &[f32]) -> Vec<u8> {
-    let mut result = Vec::with_capacity(pcm.len() * 2);
-    for &sample in pcm {
-        // 将 f32 (-1.0 ~ 1.0) 转换为 i16 (-32768 ~ 32767)
-        let sample_i16 = (sample * 32767.0).max(-32768.0).min(32767.0) as i16;
-        result.extend_from_slice(&sample_i16.to_le_bytes());
-    }
-    result
 }

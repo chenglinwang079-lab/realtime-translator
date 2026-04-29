@@ -4166,6 +4166,7 @@ dependencies = [
  "tauri-plugin-opener",
  "tokio",
  "uiautomation",
+ "uuid",
  "windows 0.62.2",
  "xcap",
 ]
