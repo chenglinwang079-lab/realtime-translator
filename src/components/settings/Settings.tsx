@@ -3,6 +3,7 @@ import { GeneralSettings } from "./GeneralSettings";
 import { EngineConfig } from "./EngineConfig";
 import { ShortcutConfig } from "./ShortcutConfig";
 import { LanguageSettings } from "./LanguageSettings";
+import { AsrConfig } from "./AsrConfig";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useUiStore } from "../../stores/uiStore";
 import {
@@ -20,7 +21,7 @@ import {
 import { getVersion } from "@tauri-apps/api/app";
 import "./settings.css";
 
-type SettingsTab = "general" | "engine" | "shortcut" | "language" | "about";
+type SettingsTab = "general" | "engine" | "shortcut" | "language" | "asr" | "about";
 
 interface Engine {
   id: string;
@@ -40,6 +41,11 @@ export function Settings() {
   const [ocrEngines, setOcrEngines] = useState<Engine[]>([]);
   const [appVersion, setAppVersion] = useState("");
   const [uninstallConfirm, setUninstallConfirm] = useState(false);
+
+  // ASR 配置状态
+  const [asrAppKey, setAsrAppKey] = useState("");
+  const [asrAccessKeyId, setAsrAccessKeyId] = useState("");
+  const [asrAccessKeySecret, setAsrAccessKeySecret] = useState("");
 
   // 加载引擎列表
   useEffect(() => {
@@ -197,6 +203,15 @@ export function Settings() {
 
   const [uninstallError, setUninstallError] = useState<string | null>(null);
 
+  // ASR 配置保存
+  const handleAsrSave = useCallback(async () => {
+    // 保存到数据库
+    await saveApiKey("aliyun-asr", asrAccessKeyId, JSON.stringify({
+      app_key: asrAppKey,
+      access_key_secret: asrAccessKeySecret,
+    }));
+  }, [asrAppKey, asrAccessKeyId, asrAccessKeySecret]);
+
   // 卸载
   const handleUninstall = useCallback(async () => {
     setUninstallError(null);
@@ -217,6 +232,7 @@ export function Settings() {
     { id: "engine", label: "引擎" },
     { id: "shortcut", label: "快捷键" },
     { id: "language", label: "语言" },
+    { id: "asr", label: "语音识别" },
     { id: "about", label: "关于" },
   ];
 
@@ -317,6 +333,18 @@ export function Settings() {
               defaultTargetLang={settings.defaultTargetLang}
               onSourceLangChange={handleSourceLangChange}
               onTargetLangChange={handleTargetLangChange}
+            />
+          )}
+
+          {activeTab === "asr" && (
+            <AsrConfig
+              appKey={asrAppKey}
+              accessKeyId={asrAccessKeyId}
+              accessKeySecret={asrAccessKeySecret}
+              onAppKeyChange={setAsrAppKey}
+              onAccessKeyIdChange={setAsrAccessKeyId}
+              onAccessKeySecretChange={setAsrAccessKeySecret}
+              onSave={handleAsrSave}
             />
           )}
 

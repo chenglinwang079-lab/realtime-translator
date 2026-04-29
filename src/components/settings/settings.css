@@ -607,6 +607,127 @@
   color: var(--color-text-tertiary);
 }
 
+/* === ASR Config === */
+.asr-config {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+}
+
+.asr-config__desc {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin: 0 0 var(--space-4);
+  line-height: var(--leading-relaxed);
+}
+
+.asr-config__form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.asr-config__field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.asr-config__label {
+  font-size: var(--text-sm);
+  font-weight: var(--weight-medium);
+  color: var(--color-text);
+}
+
+.asr-config__input {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-elevated);
+  color: var(--color-text);
+  font-size: var(--text-sm);
+  font-family: var(--font-mono);
+  transition: border-color var(--duration-fast);
+}
+
+.asr-config__input:focus {
+  outline: none;
+  border-color: var(--color-accent);
+}
+
+.asr-config__input::placeholder {
+  color: var(--color-text-tertiary);
+}
+
+.asr-config__result {
+  margin-top: var(--space-3);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+}
+
+.asr-config__result--success {
+  background: var(--color-success-subtle);
+  color: var(--color-success);
+}
+
+.asr-config__result--error {
+  background: var(--color-error-subtle);
+  color: var(--color-error);
+}
+
+.asr-config__actions {
+  display: flex;
+  gap: var(--space-2);
+  margin-top: var(--space-4);
+}
+
+.asr-config__btn {
+  padding: var(--space-2) var(--space-4);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: all var(--duration-fast);
+}
+
+.asr-config__btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.asr-config__btn--primary {
+  background: var(--gradient-accent);
+  border-color: var(--color-accent);
+  color: var(--color-text-inverse);
+}
+
+.asr-config__btn--primary:hover:not(:disabled) {
+  box-shadow: 0 2px 8px var(--color-accent-glow);
+}
+
+.asr-config__btn--secondary {
+  background: transparent;
+  border-color: var(--color-border);
+  color: var(--color-text-secondary);
+}
+
+.asr-config__btn--secondary:hover:not(:disabled) {
+  border-color: var(--color-border-hover);
+  color: var(--color-text);
+}
+
+.asr-config__help {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  line-height: var(--leading-relaxed);
+}
+
+.asr-config__help p {
+  margin: 0 0 var(--space-2);
+}
+
 /* === About Page === */
 .settings-about {
   display: flex;
