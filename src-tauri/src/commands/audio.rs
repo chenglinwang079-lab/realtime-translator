@@ -79,9 +79,17 @@ impl LiveAudioState {
         let chunk_id = self.chunk_id.clone();
         let is_active = self.is_active.clone();
 
-        let handle = tokio::spawn(async move {
+        let handle = match tokio::spawn(async move {
             Self::process_loop(app_clone, capture_clone, asr_clone, chunk_id, is_active).await;
-        });
+        }) {
+            handle => handle,
+        };
+
+        // 如果任务句柄为空（理论上不会发生），回滚
+        if handle.is_finished() {
+            self.is_active.store(false, Ordering::Release);
+            return Err("启动后台任务失败".to_string());
+        }
 
         *self.task_handle.lock().await = Some(handle);
 
