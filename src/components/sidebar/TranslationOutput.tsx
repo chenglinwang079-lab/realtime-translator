@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 
 interface TranslationOutputProps {
+  originalText?: string;
   translatedText: string;
   isTranslating: boolean;
   error?: string | null;
@@ -10,6 +11,7 @@ interface TranslationOutputProps {
 }
 
 export function TranslationOutput({
+  originalText,
   translatedText,
   isTranslating,
   error,
@@ -25,6 +27,15 @@ export function TranslationOutput({
 
   return (
     <div className="translation-output">
+      {originalText && (
+        <div className="translation-output__original">
+          <div className="translation-output__header">
+            <span className="translation-output__label">原文</span>
+          </div>
+          <div className="translation-output__text translation-output__text--original">{originalText}</div>
+        </div>
+      )}
+
       <div className="translation-output__header">
         <span className="translation-output__label">译文</span>
         {translatedText && !isTranslating && (

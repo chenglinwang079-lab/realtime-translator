@@ -452,6 +452,7 @@ export function Sidebar() {
       {/* 结果区 */}
       <div className="sidebar__output-section">
         <TranslationOutput
+          originalText={liveSource === "live" ? liveTranscript : currentOriginal}
           translatedText={liveTranslation ?? currentResult?.translatedText ?? ""}
           isTranslating={isTranslating}
           error={liveError ?? translateError}
