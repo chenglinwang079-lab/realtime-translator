@@ -33,36 +33,44 @@ export function Sidebar() {
   const setTranslating = useTranslationStore((s) => s.setTranslating);
   const setTranslateError = useTranslationStore((s) => s.setTranslateError);
 
-  // 统一 busy 语义：OCR 阶段或翻译阶段都算忙碌
   const screenOcrBusy = ocrProcessing || isTranslating;
 
   const [inputText, setInputText] = useState(currentOriginal);
   const [sourceLang, setSourceLang] = useState("auto");
   const [targetLang, setTargetLang] = useState("zh");
 
-  // 拖拽调整宽度
   const sidebarRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(SIDEBAR_DEFAULT_WIDTH);
   const [isResizing, setIsResizing] = useState(false);
   const MIN_WIDTH = 300;
   const MAX_WIDTH = 600;
 
-  // PoC 3: 通过 UIA 抓取其他应用的选中文本
   const [uiaError, setUiaError] = useState("");
 
-  // 实时音频翻译
   const {
     isActive: isLiveActive,
-    transcript: liveTranscript,
-    translation: liveTranslation,
-    source: liveSource,
+    currentTranscript,
+    sentences,
     error: liveError,
+    consolidatedTranslation,
+    isConsolidating,
+    consolidate,
     start: startLiveTranslation,
     stop: stopLiveTranslation,
+    clearSession,
   } = useLiveTranslation();
   const [isGrabbing, setIsGrabbing] = useState(false);
 
-  // 侧边栏打开/关闭时调整窗口宽度（保持当前高度）
+  const sentencesRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (sentencesRef.current) {
+      sentencesRef.current.scrollTop = sentencesRef.current.scrollHeight;
+    }
+  }, [sentences]);
+
+  // 模式判断：实时模式下隐藏手动翻译区
+  const isLiveMode = isLiveActive || sentences.length > 0;
+
   useEffect(() => {
     const adjustWidth = async () => {
       try {
@@ -81,14 +89,12 @@ export function Sidebar() {
     adjustWidth();
   }, [sidebarVisible, width]);
 
-  // 同步外部状态到输入框
   useEffect(() => {
     if (currentOriginal && currentOriginal !== inputText) {
       setInputText(currentOriginal);
     }
   }, [currentOriginal]);
 
-  // PoC 3: 监听 Ctrl+Shift+G 快捷键抓取的文本
   useEffect(() => {
     let cancelled = false;
     let unlisten: (() => void) | null = null;
@@ -117,11 +123,9 @@ export function Sidebar() {
   const handleTranslate = useCallback(async () => {
     const text = inputText.trim();
     if (!text) return;
-
     setCurrentOriginal(text);
     setTranslating(true);
     setTranslateError("");
-
     try {
       const result = await translate(text);
       setCurrentResult(result);
@@ -130,13 +134,7 @@ export function Sidebar() {
     } finally {
       setTranslating(false);
     }
-  }, [
-    inputText,
-    setCurrentOriginal,
-    setTranslating,
-    setTranslateError,
-    setCurrentResult,
-  ]);
+  }, [inputText, setCurrentOriginal, setTranslating, setTranslateError, setCurrentResult]);
 
   const handleSwapLanguages = useCallback(() => {
     if (sourceLang === "auto") return;
@@ -144,54 +142,41 @@ export function Sidebar() {
     const newTarget = sourceLang;
     setSourceLang(newSource);
     setTargetLang(newTarget);
-
-    // 如果有译文，交换原文和译文
     if (currentResult?.translatedText) {
       setInputText(currentResult.translatedText);
       setCurrentOriginal(currentResult.translatedText);
     }
-  }, [
-    sourceLang,
-    targetLang,
-    currentResult,
-    setCurrentOriginal,
-  ]);
+  }, [sourceLang, targetLang, currentResult, setCurrentOriginal]);
 
   const handleClose = useCallback(() => {
     setSidebarVisible(false);
   }, [setSidebarVisible]);
 
-  // 拖拽调整宽度
   const handleResizeStart = useCallback(
     (e: React.MouseEvent) => {
       e.preventDefault();
       setIsResizing(true);
-
       const startX = e.clientX;
       const startWidth = width;
-
       const handleMouseMove = (e: MouseEvent) => {
         const delta = startX - e.clientX;
         const newWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, startWidth + delta));
         setWidth(newWidth);
       };
-
       const handleMouseUp = () => {
         setIsResizing(false);
         document.removeEventListener("mousemove", handleMouseMove);
         document.removeEventListener("mouseup", handleMouseUp);
       };
-
       document.addEventListener("mousemove", handleMouseMove);
       document.addEventListener("mouseup", handleMouseUp);
     },
     [width]
   );
 
-  // 键盘调整宽度
   const handleResizeKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      const step = e.shiftKey ? 50 : 10; // Shift + Arrow 大步进
+      const step = e.shiftKey ? 50 : 10;
       if (e.key === "ArrowLeft") {
         e.preventDefault();
         setWidth(Math.max(MIN_WIDTH, width - step));
@@ -209,13 +194,11 @@ export function Sidebar() {
     [width]
   );
 
-  // 文件拖入处理
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.dataTransfer.dropEffect = "copy";
   }, []);
 
-  // PoC 3: 通过 UIA 抓取其他应用的选中文本
   const handleGrabText = useCallback(async () => {
     if (isGrabbing) return;
     setIsGrabbing(true);
@@ -239,19 +222,16 @@ export function Sidebar() {
     (e: React.DragEvent) => {
       e.preventDefault();
       const files = Array.from(e.dataTransfer.files);
-
-      // 只处理文本文件
-      const textFile = files.find((f) =>
-        f.type.startsWith("text/") ||
-        f.name.endsWith(".txt") ||
-        f.name.endsWith(".md") ||
-        f.name.endsWith(".csv") ||
-        f.name.endsWith(".json") ||
-        f.name.endsWith(".log")
+      const textFile = files.find(
+        (f) =>
+          f.type.startsWith("text/") ||
+          f.name.endsWith(".txt") ||
+          f.name.endsWith(".md") ||
+          f.name.endsWith(".csv") ||
+          f.name.endsWith(".json") ||
+          f.name.endsWith(".log")
       );
-
       if (textFile) {
-        // 限制文件大小 100KB
         if (textFile.size > 100 * 1024) {
           setTranslateError("文件过大，请拖入 100KB 以内的文本文件");
           return;
@@ -262,7 +242,6 @@ export function Sidebar() {
           if (text) {
             setInputText(text);
             setCurrentOriginal(text);
-            // 自动触发翻译
             setTranslating(true);
             setTranslateError("");
             try {
@@ -288,7 +267,7 @@ export function Sidebar() {
   return (
     <div
       ref={sidebarRef}
-      className={`sidebar ${isResizing ? "sidebar--resizing" : ""}`}
+      className={`sidebar ${isResizing ? "sidebar--resizing" : ""} ${isLiveMode ? "sidebar--live-mode" : ""}`}
       style={{ width: `${width}px` }}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
@@ -309,175 +288,240 @@ export function Sidebar() {
 
       {/* 侧边栏头部 */}
       <div className="sidebar__header">
-        <h2 className="sidebar__title">翻译</h2>
+        <div className="sidebar__header-left">
+          {isLiveMode && (
+            <button
+              className="sidebar__back"
+              onClick={clearSession}
+              title="返回手动翻译"
+              type="button"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <polyline points="15 18 9 12 15 6" />
+              </svg>
+            </button>
+          )}
+          <h2 className="sidebar__title">{isLiveMode ? "实时翻译" : "翻译"}</h2>
+        </div>
         <button
           className="sidebar__close"
           onClick={handleClose}
           title="关闭侧边栏"
           type="button"
         >
-          <svg
-            width="16"
-            height="16"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <line x1="18" y1="6" x2="6" y2="18" />
             <line x1="6" y1="6" x2="18" y2="18" />
           </svg>
         </button>
       </div>
 
-      {/* 语言选择器 */}
-      <LanguagePair
-        sourceLang={sourceLang}
-        targetLang={targetLang}
-        onSourceLangChange={setSourceLang}
-        onTargetLangChange={setTargetLang}
-        onSwap={handleSwapLanguages}
-      />
+      {/* 手动翻译区 — 实时模式下隐藏 */}
+      {!isLiveMode && (
+        <>
+          <LanguagePair
+            sourceLang={sourceLang}
+            targetLang={targetLang}
+            onSourceLangChange={setSourceLang}
+            onTargetLangChange={setTargetLang}
+            onSwap={handleSwapLanguages}
+          />
 
-      {/* 输入区 */}
-      <div className="sidebar__input-section">
-        <TextInput
-          value={inputText}
-          onChange={setInputText}
-          onTranslate={handleTranslate}
-          disabled={isTranslating}
-        />
-      </div>
-
-      {/* 主操作区 */}
-      <div className="sidebar__primary-actions">
-        <button
-          className="sidebar__translate-btn"
-          onClick={handleTranslate}
-          disabled={!inputText.trim() || isTranslating}
-          type="button"
-        >
-          {isTranslating ? (
-            <span className="sidebar__translate-btn-loading">
-              <span className="dot-pulse" />
-              翻译中
-            </span>
-          ) : (
-            "翻译"
-          )}
-        </button>
-      </div>
-
-      {/* 辅助操作区 */}
-      <div className="sidebar__secondary-actions">
-        <button
-          className={`sidebar__grab-btn ${isGrabbing ? "sidebar__grab-btn--loading" : ""}`}
-          onClick={handleGrabText}
-          disabled={isGrabbing}
-          type="button"
-          title="通过 Windows UI Automation 抓取其他应用中选中的文本"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" />
-          </svg>
-          <span>{isGrabbing ? "抓取中..." : "抓取文本"}</span>
-        </button>
-        <button
-          className={`sidebar__ocr-btn ${ocrProcessing ? "sidebar__ocr-btn--loading" : ""}`}
-          onClick={() => showRegionSelector()}
-          disabled={screenOcrBusy}
-          type="button"
-          title="框选屏幕区域进行 OCR 截图翻译"
-        >
-          <svg
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-          >
-            <rect x="3" y="3" width="18" height="18" rx="2" />
-            <circle cx="8.5" cy="8.5" r="1.5" />
-            <path d="M21 15l-5-5L5 21" />
-          </svg>
-          <span>{ocrProcessing ? "识别中..." : isTranslating ? "翻译中..." : "截图翻译"}</span>
-        </button>
-      </div>
-
-      {/* 辅助说明区 */}
-      <div className="sidebar__shortcut-hints">
-        <span>抓取文本 Ctrl+Shift+G</span>
-        <span>截图翻译 Ctrl+Shift+R</span>
-      </div>
-
-      {/* 实时翻译区 */}
-      <div className="sidebar__live-section">
-        <button
-          className={`sidebar__live-btn ${isLiveActive ? "sidebar__live-btn--active" : ""}`}
-          onClick={isLiveActive ? stopLiveTranslation : startLiveTranslation}
-          type="button"
-        >
-          {isLiveActive ? "停止实时翻译" : "开始实时翻译"}
-        </button>
-
-        {isLiveActive && (
-          <div className="sidebar__live-status">
-            <span className="sidebar__live-indicator" />
-            实时翻译中...
-            {liveTranscript && <span className="sidebar__live-transcript">{liveTranscript}</span>}
+          <div className="sidebar__input-section">
+            <TextInput
+              value={inputText}
+              onChange={setInputText}
+              onTranslate={handleTranslate}
+              disabled={isTranslating}
+            />
           </div>
-        )}
 
-        {liveError && (
-          <div className="sidebar__live-error">{liveError}</div>
-        )}
+          <div className="sidebar__actions-bar">
+            <button
+              className="sidebar__translate-btn"
+              onClick={handleTranslate}
+              disabled={!inputText.trim() || isTranslating}
+              type="button"
+            >
+              {isTranslating ? (
+                <span className="sidebar__translate-btn-loading">
+                  <span className="dot-pulse" />
+                  翻译中
+                </span>
+              ) : (
+                "翻译"
+              )}
+            </button>
 
-        {liveSource === "live" && liveTranslation && (
-          <div className="sidebar__source-tag">来源：实时音频</div>
-        )}
-      </div>
+            <div className="sidebar__tool-btns">
+              <button
+                className={`sidebar__tool-btn ${isGrabbing ? "sidebar__tool-btn--active" : ""}`}
+                onClick={handleGrabText}
+                disabled={isGrabbing}
+                type="button"
+                title="抓取文本 (Ctrl+Shift+G)"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M15 15l-2 5L9 9l11 4-5 2zm0 0l5 5" />
+                </svg>
+              </button>
+              <button
+                className={`sidebar__tool-btn ${ocrProcessing ? "sidebar__tool-btn--active" : ""}`}
+                onClick={() => showRegionSelector()}
+                disabled={screenOcrBusy}
+                type="button"
+                title="截图翻译 (Ctrl+Shift+R)"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <circle cx="8.5" cy="8.5" r="1.5" />
+                  <path d="M21 15l-5-5L5 21" />
+                </svg>
+              </button>
+              <button
+                className={`sidebar__tool-btn ${isLiveActive ? "sidebar__tool-btn--live" : ""}`}
+                onClick={startLiveTranslation}
+                type="button"
+                title="开始实时翻译"
+              >
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z" />
+                  <path d="M19 10v2a7 7 0 01-14 0v-2" />
+                  <line x1="12" y1="19" x2="12" y2="23" />
+                  <line x1="8" y1="23" x2="16" y2="23" />
+                </svg>
+              </button>
+            </div>
+          </div>
 
-      {uiaError && (
-        <div className="sidebar__uia-error">{uiaError}</div>
+          {uiaError && (
+            <div className="sidebar__uia-error">{uiaError}</div>
+          )}
+
+          <div className="sidebar__output-section">
+            <TranslationOutput
+              originalText={currentOriginal}
+              translatedText={currentResult?.translatedText ?? ""}
+              isTranslating={isTranslating}
+              error={translateError}
+              engineId={currentResult?.engineId}
+              latencyMs={currentResult?.latencyMs}
+              onRetry={currentOriginal ? handleTranslate : undefined}
+            />
+          </div>
+        </>
       )}
 
-      {/* 结果区 */}
-      <div className="sidebar__output-section">
-        <TranslationOutput
-          originalText={liveSource === "live" ? liveTranscript : currentOriginal}
-          translatedText={liveTranslation ?? currentResult?.translatedText ?? ""}
-          isTranslating={isTranslating}
-          error={liveError ?? translateError}
-          engineId={liveSource === "live" ? "实时音频" : currentResult?.engineId}
-          latencyMs={currentResult?.latencyMs}
-          onRetry={currentOriginal ? handleTranslate : undefined}
-        />
-      </div>
+      {/* 实时模式区 */}
+      {isLiveMode && (
+        <>
+          {/* 实时状态栏 */}
+          <div className="sidebar__live-bar">
+            {isLiveActive ? (
+              <button
+                className="sidebar__live-stop-btn"
+                onClick={stopLiveTranslation}
+                type="button"
+              >
+                <span className="sidebar__live-dot" />
+                停止
+              </button>
+            ) : (
+              <button
+                className="sidebar__live-restart-btn"
+                onClick={startLiveTranslation}
+                type="button"
+              >
+                重新开始
+              </button>
+            )}
 
-      {/* 文件拖入提示 */}
-      <div className="sidebar__drop-hint">
-        <svg
-          width="14"
-          height="14"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2"
-        >
-          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-          <polyline points="17 8 12 3 7 8" />
-          <line x1="12" y1="3" x2="12" y2="15" />
-        </svg>
-        <span>拖入文本文件翻译</span>
-      </div>
+            {isLiveActive && (
+              <div className="sidebar__live-indicator-bar">
+                <span className="sidebar__live-indicator" />
+                <span className="sidebar__live-label">识别中</span>
+              </div>
+            )}
+          </div>
+
+          {liveError && (
+            <div className="sidebar__live-error">{liveError}</div>
+          )}
+
+          {/* 当前正在识别的句子 */}
+          {currentTranscript && (
+            <div className="sidebar__live-current">
+              {currentTranscript}
+            </div>
+          )}
+
+          {/* 句子列表 — 占满剩余空间 */}
+          {sentences.length > 0 && (
+            <div className="sidebar__live-sentences" ref={sentencesRef}>
+              {sentences.map((item, i) => (
+                <div key={`${item.timestamp}-${i}`} className="sidebar__live-sentence">
+                  <div className="sidebar__live-sentence-source">{item.transcript}</div>
+                  {item.translation && (
+                    <div className="sidebar__live-sentence-target">{item.translation}</div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* 整合翻译 */}
+          {!isLiveActive && sentences.length > 0 && (
+            <div className="sidebar__consolidate-section">
+              <button
+                className="sidebar__consolidate-btn"
+                onClick={consolidate}
+                disabled={isConsolidating}
+                type="button"
+              >
+                {isConsolidating ? "整合翻译中..." : consolidatedTranslation ? "重新整合翻译" : "整合翻译"}
+              </button>
+
+              {consolidatedTranslation && (
+                <div className="sidebar__consolidate-result">
+                  <div className="sidebar__consolidate-header">
+                    <span className="sidebar__consolidate-label">整合译文</span>
+                    <button
+                      className="sidebar__consolidate-copy"
+                      onClick={() => {
+                        navigator.clipboard.writeText(consolidatedTranslation).catch(() => {
+                          const ta = document.createElement("textarea");
+                          ta.value = consolidatedTranslation;
+                          document.body.appendChild(ta);
+                          ta.select();
+                          document.execCommand("copy");
+                          document.body.removeChild(ta);
+                        });
+                      }}
+                      title="复制整合译文"
+                      type="button"
+                    >
+                      复制
+                    </button>
+                  </div>
+                  <div className="sidebar__consolidate-text">{consolidatedTranslation}</div>
+                </div>
+              )}
+            </div>
+          )}
+        </>
+      )}
+
+      {/* 文件拖入提示 — 仅手动模式 */}
+      {!isLiveMode && (
+        <div className="sidebar__drop-hint">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+            <polyline points="17 8 12 3 7 8" />
+            <line x1="12" y1="3" x2="12" y2="15" />
+          </svg>
+          <span>拖入文本文件翻译</span>
+        </div>
+      )}
     </div>
   );
 }
