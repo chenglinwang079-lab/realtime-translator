@@ -25,7 +25,12 @@ impl AliyunAsrEngine {
         }
     }
 
-    /// 从环境变量创建
+    /// 从数据库配置创建（安全方式）
+    pub fn from_config(app_key: String, access_key_id: String, access_key_secret: String) -> Self {
+        Self::new(app_key, access_key_id, access_key_secret)
+    }
+
+    /// 从环境变量创建（仅用于开发/测试，生产环境请使用 from_config）
     pub fn from_env() -> Result<Self> {
         let app_key = std::env::var("ALIYUN_ASR_APP_KEY")
             .context("未配置 ALIYUN_ASR_APP_KEY 环境变量")?;
@@ -33,6 +38,8 @@ impl AliyunAsrEngine {
             .context("未配置 ALIYUN_ACCESS_KEY_ID 环境变量")?;
         let access_key_secret = std::env::var("ALIYUN_ACCESS_KEY_SECRET")
             .context("未配置 ALIYUN_ACCESS_KEY_SECRET 环境变量")?;
+
+        log::warn!("[AliyunASR] 使用环境变量加载 API Key，生产环境请使用数据库存储");
 
         Ok(Self::new(app_key, access_key_id, access_key_secret))
     }

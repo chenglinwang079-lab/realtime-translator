@@ -10,6 +10,10 @@ use tokio::task::JoinHandle;
 use crate::audio::SystemAudioCapture;
 use crate::asr::AsrEngine;
 
+/// 音频处理常量
+const CHUNK_DURATION_MS: u32 = 3000; // 每 3 秒切片
+const POLL_INTERVAL_MS: u64 = 100; // 轮询间隔
+
 /// 实时音频翻译状态
 pub struct LiveAudioState {
     is_active: Arc<AtomicBool>,
@@ -29,7 +33,7 @@ impl LiveAudioState {
     }
 
     pub fn is_active(&self) -> bool {
-        self.is_active.load(Ordering::Relaxed)
+        self.is_active.load(Ordering::Acquire)
     }
 
     pub async fn start(
@@ -38,23 +42,26 @@ impl LiveAudioState {
         capture: Arc<Mutex<SystemAudioCapture>>,
         asr: Arc<dyn AsrEngine>,
     ) -> Result<(), String> {
-        // 检查是否已在运行
-        if self.is_active.swap(true, Ordering::Relaxed) {
+        // 使用 Acquire 内存顺序，确保之前的写入对其他线程可见
+        if self.is_active.swap(true, Ordering::AcqRel) {
             return Err("已经在运行中".to_string());
         }
 
         // 重置 chunk 计数
-        self.chunk_id.store(0, Ordering::Relaxed);
+        self.chunk_id.store(0, Ordering::Release);
 
         // 记录开始时间
         *self.started_at.lock().await = Some(Instant::now());
 
         // 启动捕获
-        capture
-            .lock()
-            .await
-            .start()
-            .map_err(|e| format!("启动音频捕获失败: {}", e))?;
+        match capture.lock().await.start() {
+            Ok(()) => {}
+            Err(e) => {
+                // 启动失败，回滚 is_active 状态
+                self.is_active.store(false, Ordering::Release);
+                return Err(format!("启动音频捕获失败: {}", e));
+            }
+        }
 
         // 发送状态变化事件
         let _ = app.emit(
@@ -83,8 +90,8 @@ impl LiveAudioState {
     }
 
     pub async fn stop(&self, capture: Arc<Mutex<SystemAudioCapture>>) -> Result<(), String> {
-        // 标记停止
-        self.is_active.store(false, Ordering::Relaxed);
+        // 标记停止，使用 Release 确保对其他线程可见
+        self.is_active.store(false, Ordering::Release);
 
         // abort 后台任务
         if let Some(handle) = self.task_handle.lock().await.take() {
@@ -99,7 +106,7 @@ impl LiveAudioState {
             .map_err(|e| format!("停止音频捕获失败: {}", e))?;
 
         // 重置 chunk 计数
-        self.chunk_id.store(0, Ordering::Relaxed);
+        self.chunk_id.store(0, Ordering::Release);
 
         // 清空开始时间
         *self.started_at.lock().await = None;
@@ -116,16 +123,14 @@ impl LiveAudioState {
         chunk_id: Arc<AtomicU32>,
         is_active: Arc<AtomicBool>,
     ) {
-        let chunk_duration_ms = 3000; // 每 3 秒切片
-
-        while is_active.load(Ordering::Relaxed) {
+        while is_active.load(Ordering::Acquire) {
             // 等待音频数据
-            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+            tokio::time::sleep(tokio::time::Duration::from_millis(POLL_INTERVAL_MS)).await;
 
             // 读取音频数据
             let audio_data = {
                 let capture = capture.lock().await;
-                capture.read_chunk(chunk_duration_ms)
+                capture.read_chunk(CHUNK_DURATION_MS)
             };
 
             let Some(audio) = audio_data else {
@@ -137,13 +142,19 @@ impl LiveAudioState {
             }
 
             // 识别
-            let current_chunk_id = chunk_id.fetch_add(1, Ordering::Relaxed);
+            let current_chunk_id = chunk_id.fetch_add(1, Ordering::AcqRel);
             let timestamp_ms = std::time::SystemTime::now()
                 .duration_since(std::time::UNIX_EPOCH)
                 .unwrap_or_default()
                 .as_millis() as u64;
 
-            match asr.recognize(&audio, 48000).await {
+            // 从 capture 配置中获取采样率
+            let sample_rate = {
+                let capture = capture.lock().await;
+                capture.config().sample_rate
+            };
+
+            match asr.recognize(&audio, sample_rate).await {
                 Ok(result) => {
                     // 发送识别结果事件
                     let payload = LiveTranscriptPayload {
@@ -154,7 +165,7 @@ impl LiveAudioState {
                         is_final: true,
                         chunk_id: current_chunk_id,
                         timestamp_ms,
-                        duration_ms: Some(chunk_duration_ms as u64),
+                        duration_ms: Some(CHUNK_DURATION_MS as u64),
                     };
 
                     if let Err(e) = app.emit("live-transcript", payload) {
@@ -219,13 +230,46 @@ pub async fn start_live_audio_translation(
     app: AppHandle,
     state: State<'_, Arc<LiveAudioState>>,
     capture: State<'_, Arc<Mutex<SystemAudioCapture>>>,
+    db: State<'_, crate::db::Database>,
 ) -> Result<(), String> {
-    // 创建阿里云 ASR 引擎
-    let asr: Arc<dyn AsrEngine> = match crate::asr::AliyunAsrEngine::from_env() {
-        Ok(engine) => Arc::new(engine),
+    // 优先从数据库读取 API Key
+    let asr: Arc<dyn AsrEngine> = match db.get_engine_config("aliyun-asr").await {
+        Ok(Some(config)) => {
+            if let Some(api_key) = config.api_key {
+                // 从 extra_json 中读取 app_key 和 access_key_secret
+                let extra: serde_json::Value = config.extra_json
+                    .and_then(|s| serde_json::from_str(&s).ok())
+                    .unwrap_or_default();
+
+                let app_key = extra["app_key"].as_str().unwrap_or_default().to_string();
+                let access_key_secret = extra["access_key_secret"].as_str().unwrap_or_default().to_string();
+
+                if !app_key.is_empty() && !access_key_secret.is_empty() {
+                    Arc::new(crate::asr::AliyunAsrEngine::from_config(
+                        app_key,
+                        api_key, // access_key_id
+                        access_key_secret,
+                    ))
+                } else {
+                    return Err("阿里云 ASR 配置不完整，请在设置中配置 app_key 和 access_key_secret".to_string());
+                }
+            } else {
+                return Err("阿里云 ASR API Key 未配置，请在设置中配置".to_string());
+            }
+        }
+        Ok(None) => {
+            // 数据库中没有配置，尝试环境变量（仅开发环境）
+            log::warn!("[LiveAudio] 数据库中未找到阿里云 ASR 配置，尝试环境变量");
+            match crate::asr::AliyunAsrEngine::from_env() {
+                Ok(engine) => Arc::new(engine),
+                Err(e) => {
+                    return Err(format!("ASR 引擎初始化失败: {}", e));
+                }
+            }
+        }
         Err(e) => {
-            log::warn!("[LiveAudio] 阿里云 ASR 引擎初始化失败: {}", e);
-            return Err(format!("ASR 引擎初始化失败: {}", e));
+            log::error!("[LiveAudio] 读取数据库配置失败: {}", e);
+            return Err(format!("读取 ASR 配置失败: {}", e));
         }
     };
 

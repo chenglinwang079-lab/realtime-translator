@@ -25,22 +25,33 @@ impl Default for AudioCaptureConfig {
     }
 }
 
+/// 音频处理常量
+const MAX_BUFFER_DURATION_SECS: u32 = 5;
+const DEFAULT_CHUNK_DURATION_MS: u32 = 3000;
+
 /// 系统音频捕获状态
 #[cfg(target_os = "windows")]
 pub struct SystemAudioCapture {
     config: AudioCaptureConfig,
     is_running: Arc<Mutex<bool>>,
     buffer: Arc<Mutex<Vec<f32>>>,
+    // 预分配的静音缓冲区，避免每次分配
+    silence_buffer: Vec<f32>,
 }
 
 #[cfg(target_os = "windows")]
 impl SystemAudioCapture {
     /// 创建新的系统音频捕获实例
     pub fn new(config: AudioCaptureConfig) -> Result<Self> {
+        let samples_per_ms = config.sample_rate / 1000 * config.channels as u32;
+        let chunk_size = samples_per_ms * config.buffer_duration_ms;
+        let silence_buffer = vec![0.0; chunk_size as usize];
+
         Ok(Self {
             config,
             is_running: Arc::new(Mutex::new(false)),
             buffer: Arc::new(Mutex::new(Vec::new())),
+            silence_buffer,
         })
     }
 
@@ -131,17 +142,17 @@ impl SystemAudioCapture {
 
         let samples_per_ms = config.sample_rate / 1000 * config.channels as u32;
         let chunk_size = samples_per_ms * config.buffer_duration_ms;
+        let silence: Vec<f32> = vec![0.0; chunk_size as usize];
+
+        // 计算最大缓冲区大小
+        let max_samples = (config.sample_rate * MAX_BUFFER_DURATION_SECS * config.channels as u32) as usize;
 
         while *is_running.lock().unwrap() {
-            // 生成静音数据（占位）
-            let silence: Vec<f32> = vec![0.0; chunk_size as usize];
-
             {
                 let mut buf = buffer.lock().unwrap();
                 buf.extend_from_slice(&silence);
 
-                // 限制缓冲区大小（最多保存 5 秒音频）
-                let max_samples = (config.sample_rate * 5 * config.channels as u32) as usize;
+                // 限制缓冲区大小
                 if buf.len() > max_samples {
                     let drain_count = buf.len() - max_samples;
                     buf.drain(..drain_count);
