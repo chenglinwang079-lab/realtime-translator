@@ -594,8 +594,8 @@ impl SpeechTranslationEngine for DashScopeAsrEngine {
         let max_amp = resampled.iter().map(|s| s.abs()).fold(0.0f32, f32::max);
         let rms = if resampled.is_empty() { 0.0 } else { (resampled.iter().map(|s| s * s).sum::<f32>() / resampled.len() as f32).sqrt() };
         log::debug!(
-            "[DashScopeAsr] 发送音频: {}Hz→16kHz, {} 样本(立体声) → {} 样本(单声道) → {} 字节, max={:.4}, rms={:.4}",
-            sample_rate, pcm.len(), resampled.len(), pcm16.len(), max_amp, rms
+            "[DashScopeAsr] 发送音频: {}Hz→16kHz, {} 样本({}ch) → {} 样本(单声道) → {} 字节, max={:.4}, rms={:.4}",
+            sample_rate, pcm.len(), num_channels, resampled.len(), pcm16.len(), max_amp, rms
         );
 
         // 录制到 WAV 文件（调试用）
