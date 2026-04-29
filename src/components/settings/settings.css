@@ -728,6 +728,24 @@
   margin: 0 0 var(--space-2);
 }
 
+.asr-config__help a {
+  color: var(--color-accent);
+  text-decoration: underline;
+}
+
+.asr-config__legacy summary {
+  cursor: pointer;
+  user-select: none;
+}
+
+.asr-config__legacy summary:hover {
+  color: var(--color-text);
+}
+
+.asr-config__legacy[open] summary {
+  margin-bottom: var(--space-4);
+}
+
 /* === About Page === */
 .settings-about {
   display: flex;

@@ -8,11 +8,13 @@ use tokio::sync::Mutex;
 use tokio::task::JoinHandle;
 
 use crate::audio::SystemAudioCapture;
-use crate::asr::AsrEngine;
+use crate::speech_translation::{SpeechTranslationEngine, LiveTranslationPayload, dashscope::{DashScopeAsrEngine, DashScopeAsrConfig}};
+use crate::translation::engine_manager::EngineManager;
+use super::translation::EngineManagerState;
 
 /// 音频处理常量
-const CHUNK_DURATION_MS: u32 = 3000; // 每 3 秒切片
-const POLL_INTERVAL_MS: u64 = 100; // 轮询间隔
+const CHUNK_DURATION_MS: u32 = 800; // 每 800ms 切片（足够 ASR 识别完整句子）
+const POLL_INTERVAL_MS: u64 = 50; // 轮询间隔
 
 /// 实时音频翻译状态
 pub struct LiveAudioState {
@@ -20,6 +22,7 @@ pub struct LiveAudioState {
     task_handle: Mutex<Option<JoinHandle<()>>>,
     chunk_id: Arc<AtomicU32>,
     started_at: Mutex<Option<Instant>>,
+    engine: Mutex<Option<Arc<dyn SpeechTranslationEngine>>>,
 }
 
 impl LiveAudioState {
@@ -29,6 +32,7 @@ impl LiveAudioState {
             task_handle: Mutex::new(None),
             chunk_id: Arc::new(AtomicU32::new(0)),
             started_at: Mutex::new(None),
+            engine: Mutex::new(None),
         }
     }
 
@@ -40,7 +44,8 @@ impl LiveAudioState {
         &self,
         app: AppHandle,
         capture: Arc<Mutex<SystemAudioCapture>>,
-        asr: Arc<dyn AsrEngine>,
+        engine: Arc<dyn SpeechTranslationEngine>,
+        translation_mgr: Option<Arc<Mutex<EngineManager>>>,
     ) -> Result<(), String> {
         // 使用 Acquire 内存顺序，确保之前的写入对其他线程可见
         if self.is_active.swap(true, Ordering::AcqRel) {
@@ -63,6 +68,21 @@ impl LiveAudioState {
             }
         }
 
+        // 设置结果通道
+        let (result_tx, mut result_rx) = tokio::sync::mpsc::channel::<LiveTranslationPayload>(100);
+        engine.set_result_channel(result_tx);
+
+        // 保存引擎引用
+        *self.engine.lock().await = Some(engine.clone());
+
+        // 启动翻译会话
+        if let Err(e) = engine.start_session().await {
+            // 启动失败，回滚
+            self.is_active.store(false, Ordering::Release);
+            capture.lock().await.stop().ok();
+            return Err(format!("启动翻译会话失败: {}", e));
+        }
+
         // 发送状态变化事件
         let _ = app.emit(
             "live-translation-state-changed",
@@ -75,12 +95,43 @@ impl LiveAudioState {
         // 启动后台任务
         let app_clone = app.clone();
         let capture_clone = capture.clone();
-        let asr_clone = asr.clone();
+        let engine_clone = engine.clone();
         let chunk_id = self.chunk_id.clone();
         let is_active = self.is_active.clone();
 
+        // 启动结果接收任务（仅对最终结果触发翻译）
+        let app_for_results = app.clone();
+        let mgr = translation_mgr;
+        tokio::spawn(async move {
+            while let Some(mut result) = result_rx.recv().await {
+                // 只对最终结果（is_final = true）触发翻译
+                // 中间结果直接透传，前端仅更新 transcript
+                if result.is_final && !result.transcript_text.is_empty() {
+                    if let Some(ref mgr) = mgr {
+                        match mgr.lock().await.translate(&result.transcript_text, None).await {
+                            Ok(tr) => {
+                                result.translated_text = tr.translated_text;
+                                result.target_language = Some(tr.target_lang);
+                                result.source_language = Some(tr.source_lang);
+                            }
+                            Err(e) => {
+                                log::warn!("[LiveAudio] 翻译失败: {}", e);
+                                let _ = app_for_results.emit("live-translation-error", LiveTranslationError {
+                                    error: format!("翻译失败: {}", e),
+                                    recoverable: true,
+                                });
+                            }
+                        }
+                    }
+                }
+                if let Err(e) = app_for_results.emit("live-translation-result", result) {
+                    log::error!("[LiveAudio] 发送翻译结果事件失败: {}", e);
+                }
+            }
+        });
+
         let handle = match tokio::spawn(async move {
-            Self::process_loop(app_clone, capture_clone, asr_clone, chunk_id, is_active).await;
+            Self::process_loop(app_clone, capture_clone, engine_clone, chunk_id, is_active).await;
         }) {
             handle => handle,
         };
@@ -88,6 +139,8 @@ impl LiveAudioState {
         // 如果任务句柄为空（理论上不会发生），回滚
         if handle.is_finished() {
             self.is_active.store(false, Ordering::Release);
+            capture.lock().await.stop().ok();
+            engine.stop_session().await.ok();
             return Err("启动后台任务失败".to_string());
         }
 
@@ -97,13 +150,21 @@ impl LiveAudioState {
         Ok(())
     }
 
-    pub async fn stop(&self, capture: Arc<Mutex<SystemAudioCapture>>) -> Result<(), String> {
+    pub async fn stop(&self, app: AppHandle, capture: Arc<Mutex<SystemAudioCapture>>) -> Result<(), String> {
         // 标记停止，使用 Release 确保对其他线程可见
         self.is_active.store(false, Ordering::Release);
 
         // abort 后台任务
         if let Some(handle) = self.task_handle.lock().await.take() {
             handle.abort();
+        }
+
+        // 获取引擎并停止会话
+        let engine = self.engine.lock().await.take();
+        if let Some(engine) = engine {
+            if let Err(e) = engine.stop_session().await {
+                log::warn!("[LiveAudio] 停止翻译会话失败: {}", e);
+            }
         }
 
         // 显式停止 capture，清理资源
@@ -119,6 +180,15 @@ impl LiveAudioState {
         // 清空开始时间
         *self.started_at.lock().await = None;
 
+        // 通知前端状态已变更（因为 abort 会阻止 process_loop 发送此事件）
+        let _ = app.emit(
+            "live-translation-state-changed",
+            LiveTranslationState {
+                is_active: false,
+                duration_ms: 0,
+            },
+        );
+
         log::info!("[LiveAudio] 停止实时音频翻译");
         Ok(())
     }
@@ -127,7 +197,7 @@ impl LiveAudioState {
     async fn process_loop(
         app: AppHandle,
         capture: Arc<Mutex<SystemAudioCapture>>,
-        asr: Arc<dyn AsrEngine>,
+        engine: Arc<dyn SpeechTranslationEngine>,
         chunk_id: Arc<AtomicU32>,
         is_active: Arc<AtomicBool>,
     ) {
@@ -149,48 +219,23 @@ impl LiveAudioState {
                 continue;
             }
 
-            // 识别
-            let current_chunk_id = chunk_id.fetch_add(1, Ordering::AcqRel);
-            let timestamp_ms = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap_or_default()
-                .as_millis() as u64;
-
-            // 从 capture 配置中获取采样率
+            // 从 capture 获取采样率
             let sample_rate = {
                 let capture = capture.lock().await;
-                capture.config().sample_rate
+                capture.sample_rate()
             };
 
-            match asr.recognize(&audio, sample_rate).await {
-                Ok(result) => {
-                    // 发送识别结果事件
-                    let payload = LiveTranscriptPayload {
-                        text: result.text,
-                        language: result.language,
-                        confidence: result.confidence,
-                        latency_ms: result.latency_ms,
-                        is_final: true,
-                        chunk_id: current_chunk_id,
-                        timestamp_ms,
-                        duration_ms: Some(CHUNK_DURATION_MS as u64),
-                    };
+            // 发送音频到翻译引擎
+            if let Err(e) = engine.send_audio_chunk(&audio, sample_rate).await {
+                log::warn!("[LiveAudio] 发送音频失败: {}", e);
 
-                    if let Err(e) = app.emit("live-transcript", payload) {
-                        log::error!("[LiveAudio] 发送事件失败: {}", e);
-                    }
-                }
-                Err(e) => {
-                    log::warn!("[LiveAudio] ASR 识别失败: {}", e);
+                // 发送错误事件
+                let payload = LiveTranslationError {
+                    error: e.to_string(),
+                    recoverable: true,
+                };
 
-                    // 发送错误事件
-                    let payload = LiveTranslationError {
-                        error: e.to_string(),
-                        recoverable: true,
-                    };
-
-                    let _ = app.emit("live-translation-error", payload);
-                }
+                let _ = app.emit("live-translation-error", payload);
             }
         }
 
@@ -203,19 +248,6 @@ impl LiveAudioState {
             },
         );
     }
-}
-
-/// 实时翻译转录事件 payload
-#[derive(Serialize, Clone)]
-pub struct LiveTranscriptPayload {
-    pub text: String,
-    pub language: Option<String>,
-    pub confidence: f32,
-    pub latency_ms: u64,
-    pub is_final: bool,
-    pub chunk_id: u32,
-    pub timestamp_ms: u64,
-    pub duration_ms: Option<u64>,
 }
 
 /// 实时翻译错误事件
@@ -239,58 +271,61 @@ pub async fn start_live_audio_translation(
     state: State<'_, Arc<LiveAudioState>>,
     capture: State<'_, Arc<Mutex<SystemAudioCapture>>>,
     db: State<'_, crate::db::Database>,
+    engine_mgr: State<'_, EngineManagerState>,
 ) -> Result<(), String> {
-    // 优先从数据库读取 API Key
-    let asr: Arc<dyn AsrEngine> = match db.get_engine_config("aliyun-asr").await {
+    // 构建 DashScope ASR 引擎
+    let engine: Arc<dyn SpeechTranslationEngine> = match db.get_engine_config("dashscope-asr").await {
         Ok(Some(config)) => {
             if let Some(api_key) = config.api_key {
-                // 从 extra_json 中读取 app_key 和 access_key_secret
-                let extra: serde_json::Value = config.extra_json
-                    .and_then(|s| serde_json::from_str(&s).ok())
-                    .unwrap_or_default();
+                if !api_key.is_empty() {
+                    // 从 extra_json 读取语言配置
+                    let extra: serde_json::Value = config.extra_json
+                        .and_then(|s| serde_json::from_str(&s).ok())
+                        .unwrap_or_default();
 
-                let app_key = extra["app_key"].as_str().unwrap_or_default().to_string();
-                let access_key_secret = extra["access_key_secret"].as_str().unwrap_or_default().to_string();
+                    let language_hints: Vec<String> = extra["language_hints"]
+                        .as_array()
+                        .map(|arr| arr.iter().filter_map(|v| v.as_str().map(String::from)).collect())
+                        .unwrap_or_else(|| vec!["en".to_string()]);
 
-                if !app_key.is_empty() && !access_key_secret.is_empty() {
-                    Arc::new(crate::asr::AliyunAsrEngine::from_config(
-                        app_key,
-                        api_key, // access_key_id
-                        access_key_secret,
-                    ))
+                    let engine_config = DashScopeAsrConfig { api_key, language_hints };
+                    Arc::new(DashScopeAsrEngine::new(engine_config, capture.inner().clone()))
                 } else {
-                    return Err("阿里云 ASR 配置不完整，请在设置中配置 app_key 和 access_key_secret".to_string());
+                    return Err("DashScope API Key 为空，请在设置中配置".to_string());
                 }
             } else {
-                return Err("阿里云 ASR API Key 未配置，请在设置中配置".to_string());
+                return Err("DashScope API Key 未配置，请在设置中配置".to_string());
             }
         }
         Ok(None) => {
-            // 数据库中没有配置，尝试环境变量（仅开发环境）
-            log::warn!("[LiveAudio] 数据库中未找到阿里云 ASR 配置，尝试环境变量");
-            match crate::asr::AliyunAsrEngine::from_env() {
-                Ok(engine) => Arc::new(engine),
-                Err(e) => {
-                    return Err(format!("ASR 引擎初始化失败: {}", e));
-                }
-            }
+            // 数据库中没有配置，尝试环境变量
+            log::warn!("[LiveAudio] 数据库中未找到 DashScope 配置，尝试环境变量");
+            let api_key = std::env::var("DASHSCOPE_API_KEY")
+                .map_err(|_| "环境变量 DASHSCOPE_API_KEY 未设置".to_string())?;
+
+            let engine_config = DashScopeAsrConfig {
+                api_key,
+                language_hints: vec!["en".to_string()],
+            };
+            Arc::new(DashScopeAsrEngine::new(engine_config, capture.inner().clone()))
         }
         Err(e) => {
             log::error!("[LiveAudio] 读取数据库配置失败: {}", e);
-            return Err(format!("读取 ASR 配置失败: {}", e));
+            return Err(format!("读取配置失败: {}", e));
         }
     };
 
-    state.start(app, capture.inner().clone(), asr).await
+    state.start(app, capture.inner().clone(), engine, Some(engine_mgr.inner().0.clone())).await
 }
 
 /// 停止实时音频翻译
 #[tauri::command]
 pub async fn stop_live_audio_translation(
+    app: AppHandle,
     state: State<'_, Arc<LiveAudioState>>,
     capture: State<'_, Arc<Mutex<SystemAudioCapture>>>,
 ) -> Result<(), String> {
-    state.stop(capture.inner().clone()).await
+    state.stop(app, capture.inner().clone()).await
 }
 
 /// 获取实时翻译状态

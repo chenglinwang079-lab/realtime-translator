@@ -1,13 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import { translateText, type TranslationResult } from "../lib/translation-service";
 
-export interface LiveTranscriptPayload {
-  text: string;
-  language: string | null;
-  confidence: number;
-  latency_ms: number;
+export interface LiveTranslationPayload {
+  transcript_text: string;
+  translated_text: string;
+  source_language: string | null;
+  target_language: string | null;
   is_final: boolean;
   chunk_id: number;
   timestamp_ms: number;
@@ -27,26 +26,23 @@ export interface LiveTranslationState {
 export function useLiveTranslation() {
   const [isActive, setIsActive] = useState(false);
   const [transcript, setTranscript] = useState("");
-  const [translation, setTranslation] = useState<TranslationResult | null>(null);
+  const [translation, setTranslation] = useState<string | null>(null);
   const [source, setSource] = useState<"live" | "manual">("manual");
   const [error, setError] = useState<string | null>(null);
 
-  // 监听 live-transcript 事件
+  // 监听 live-translation-result 事件
   useEffect(() => {
-    const unlisten = listen<LiveTranscriptPayload>("live-transcript", async (event) => {
-      const { text, is_final } = event.payload;
-      setTranscript(text);
+    const unlisten = listen<LiveTranslationPayload>("live-translation-result", (event) => {
+      const { transcript_text, translated_text, is_final } = event.payload;
 
-      // 只翻译 is_final（避免频繁触发翻译请求）
-      if (is_final && text.trim()) {
-        try {
-          setSource("live");
-          setError(null);
-          const result = await translateText(text);
-          setTranslation(result);
-        } catch (err) {
-          setError(err instanceof Error ? err.message : String(err));
-        }
+      // 显示原文
+      setTranscript(transcript_text);
+
+      // 只处理最终结果的译文
+      if (is_final && translated_text.trim()) {
+        setSource("live");
+        setTranslation(translated_text);
+        setError(null);
       }
     });
 
@@ -71,6 +67,10 @@ export function useLiveTranslation() {
   useEffect(() => {
     const unlisten = listen<LiveTranslationState>("live-translation-state-changed", (event) => {
       setIsActive(event.payload.is_active);
+      // 停止时切回 manual
+      if (!event.payload.is_active) {
+        setSource("manual");
+      }
     });
 
     return () => {
@@ -83,7 +83,7 @@ export function useLiveTranslation() {
     try {
       setError(null);
       await invoke("start_live_audio_translation");
-      setIsActive(true);
+      // 不在这里设置 isActive，完全依赖 live-translation-state-changed 事件
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }
@@ -93,8 +93,7 @@ export function useLiveTranslation() {
   const stop = useCallback(async () => {
     try {
       await invoke("stop_live_audio_translation");
-      setIsActive(false);
-      setSource("manual");
+      // 不在这里设置 isActive 和 source，完全依赖事件
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     }

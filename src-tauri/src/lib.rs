@@ -8,6 +8,7 @@ mod logger;
 mod ocr;
 mod screenshot;
 mod shortcuts;
+mod speech_translation;
 mod translation;
 mod tray;
 mod window;
@@ -51,6 +52,7 @@ pub fn run() {
             commands::settings::update_settings,
             commands::settings::save_api_key,
             commands::settings::delete_api_key,
+            commands::settings::get_engine_config,
             commands::shortcuts::register_shortcut,
             commands::shortcuts::unregister_shortcut,
             commands::history::save_history,

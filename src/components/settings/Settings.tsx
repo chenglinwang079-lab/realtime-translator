@@ -17,6 +17,7 @@ import {
   getOcrEngines,
   testOcrEngine,
   uninstallApp,
+  getEngineConfig,
 } from "../../lib/tauri-bridge";
 import { getVersion } from "@tauri-apps/api/app";
 import "./settings.css";
@@ -43,6 +44,7 @@ export function Settings() {
   const [uninstallConfirm, setUninstallConfirm] = useState(false);
 
   // ASR 配置状态
+  const [dashscopeApiKey, setDashscopeApiKey] = useState("");
   const [asrAppKey, setAsrAppKey] = useState("");
   const [asrAccessKeyId, setAsrAccessKeyId] = useState("");
   const [asrAccessKeySecret, setAsrAccessKeySecret] = useState("");
@@ -61,6 +63,36 @@ export function Settings() {
         .catch(() => {});
       setUninstallConfirm(false);
       setUninstallError(null);
+
+      // 加载已保存的 ASR 配置
+      getEngineConfig("dashscope-asr")
+        .then((config) => {
+          setDashscopeApiKey(config?.apiKey ?? "");
+        })
+        .catch((err) => {
+          console.error("Failed to load DashScope config:", err);
+        });
+      getEngineConfig("aliyun-asr")
+        .then((config) => {
+          if (config) {
+            setAsrAccessKeyId(config.apiKey ?? "");
+            let extra: { app_key?: string; access_key_secret?: string } = {};
+            try {
+              extra = JSON.parse(config.extraJson ?? "{}");
+            } catch {
+              extra = {};
+            }
+            setAsrAppKey(extra.app_key ?? "");
+            setAsrAccessKeySecret(extra.access_key_secret ?? "");
+          } else {
+            setAsrAccessKeyId("");
+            setAsrAppKey("");
+            setAsrAccessKeySecret("");
+          }
+        })
+        .catch((err) => {
+          console.error("Failed to load ASR config:", err);
+        });
     }
   }, [settingsOpen]);
 
@@ -203,9 +235,13 @@ export function Settings() {
 
   const [uninstallError, setUninstallError] = useState<string | null>(null);
 
-  // ASR 配置保存
+  // DashScope 配置保存
+  const handleDashScopeSave = useCallback(async () => {
+    await saveApiKey("dashscope-asr", dashscopeApiKey);
+  }, [dashscopeApiKey]);
+
+  // 旧 NLS 配置保存
   const handleAsrSave = useCallback(async () => {
-    // 保存到数据库
     await saveApiKey("aliyun-asr", asrAccessKeyId, JSON.stringify({
       app_key: asrAppKey,
       access_key_secret: asrAccessKeySecret,
@@ -338,13 +374,16 @@ export function Settings() {
 
           {activeTab === "asr" && (
             <AsrConfig
+              dashscopeApiKey={dashscopeApiKey}
+              onDashscopeApiKeyChange={setDashscopeApiKey}
+              onSaveDashScope={handleDashScopeSave}
               appKey={asrAppKey}
               accessKeyId={asrAccessKeyId}
               accessKeySecret={asrAccessKeySecret}
               onAppKeyChange={setAsrAppKey}
               onAccessKeyIdChange={setAsrAccessKeyId}
               onAccessKeySecretChange={setAsrAccessKeySecret}
-              onSave={handleAsrSave}
+              onSaveNls={handleAsrSave}
             />
           )}
 

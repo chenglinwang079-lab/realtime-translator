@@ -29,6 +29,7 @@ async-trait = "0.1"
 anyhow = "1"
 base64 = "0.22"
 hmac = "0.12"
+sha1 = "0.10"
 sha2 = "0.10"
 hex = "0.4"
 chrono = "0.4"
@@ -41,6 +42,10 @@ uuid = { version = "1", features = ["v4"] }
 tauri-plugin-global-shortcut = "2.3.1"
 xcap = "0.9.4"
 image = { version = "0.25", default-features = false, features = ["png"] }
+scopeguard = "1"
+tokio-tungstenite = { version = "0.26", features = ["native-tls"] }
+urlencoding = "2"
+futures-util = "0.3"
 
 [target.'cfg(windows)'.dependencies]
 windows = { version = "0.62", features = [
@@ -55,6 +60,7 @@ windows = { version = "0.62", features = [
   "Win32_System_Com_StructuredStorage",
   "Win32_System_Variant",
   "Win32_System_Ole",
+  "Win32_System_Memory",
 ] }
 uiautomation = { version = "0.24", features = ["event"] }
 

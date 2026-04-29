@@ -159,6 +159,33 @@ pub async fn save_api_key(
     Ok(())
 }
 
+/// 引擎配置响应（与前端 EngineConfigResponse 对应）
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EngineConfigResponse {
+    pub engine_id: String,
+    pub api_key: Option<String>,
+    pub base_url: Option<String>,
+    pub is_default: i32,
+    pub extra_json: Option<String>,
+}
+
+/// 获取单个引擎的配置
+#[tauri::command]
+pub async fn get_engine_config(
+    db: State<'_, Database>,
+    engine_id: String,
+) -> Result<Option<EngineConfigResponse>, String> {
+    let row = db.get_engine_config(&engine_id).await.map_err(|e| e.to_string())?;
+    Ok(row.map(|r| EngineConfigResponse {
+        engine_id: r.engine_id,
+        api_key: r.api_key,
+        base_url: r.base_url,
+        is_default: r.is_default,
+        extra_json: r.extra_json,
+    }))
+}
+
 /// 删除引擎 API Key 并移除引擎
 #[tauri::command]
 pub async fn delete_api_key(

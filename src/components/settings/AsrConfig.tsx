@@ -1,62 +1,118 @@
 import { useCallback, useState } from "react";
 
 interface AsrConfigProps {
+  // DashScope（新方案）
+  dashscopeApiKey: string;
+  onDashscopeApiKeyChange: (value: string) => void;
+  onSaveDashScope: () => Promise<void>;
+  // 旧 NLS 配置（保留）
   appKey: string;
   accessKeyId: string;
   accessKeySecret: string;
   onAppKeyChange: (value: string) => void;
   onAccessKeyIdChange: (value: string) => void;
   onAccessKeySecretChange: (value: string) => void;
-  onSave: () => Promise<void>;
-  onTest?: () => Promise<number>;
+  onSaveNls: () => Promise<void>;
 }
 
 export function AsrConfig({
+  dashscopeApiKey,
+  onDashscopeApiKeyChange,
+  onSaveDashScope,
   appKey,
   accessKeyId,
   accessKeySecret,
   onAppKeyChange,
   onAccessKeyIdChange,
   onAccessKeySecretChange,
-  onSave,
-  onTest,
+  onSaveNls,
 }: AsrConfigProps) {
-  const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
   const [saving, setSaving] = useState(false);
 
-  const handleTest = useCallback(async () => {
-    if (!onTest) return;
-    setTesting(true);
+  const handleSaveDashScope = useCallback(async () => {
+    setSaving(true);
     setTestResult(null);
     try {
-      const latency = await onTest();
-      setTestResult({ success: true, message: `连接成功 (${latency}ms)` });
-    } catch (err) {
-      setTestResult({ success: false, message: String(err) });
-    } finally {
-      setTesting(false);
-    }
-  }, [onTest]);
-
-  const handleSave = useCallback(async () => {
-    setSaving(true);
-    try {
-      await onSave();
-      setTestResult({ success: true, message: "保存成功" });
+      await onSaveDashScope();
+      setTestResult({ success: true, message: "DashScope 配置已保存" });
     } catch (err) {
       setTestResult({ success: false, message: String(err) });
     } finally {
       setSaving(false);
     }
-  }, [onSave]);
+  }, [onSaveDashScope]);
+
+  const handleSaveNls = useCallback(async () => {
+    setSaving(true);
+    setTestResult(null);
+    try {
+      await onSaveNls();
+      setTestResult({ success: true, message: "NLS 配置已保存" });
+    } catch (err) {
+      setTestResult({ success: false, message: String(err) });
+    } finally {
+      setSaving(false);
+    }
+  }, [onSaveNls]);
 
   return (
     <div className="asr-config">
+      {/* DashScope 配置（推荐） */}
       <div className="settings-section">
-        <h3 className="settings-section__title">阿里云实时语音识别</h3>
+        <h3 className="settings-section__title">DashScope 实时语音识别（推荐）</h3>
         <p className="asr-config__desc">
-          配置阿里云实时语音识别 API，用于系统音频实时翻译功能。
+          使用阿里云 DashScope FunASR Paraformer 引擎，识别质量更好，支持中英文。
+        </p>
+
+        <div className="asr-config__form">
+          <div className="asr-config__field">
+            <label className="asr-config__label">API Key</label>
+            <input
+              type="password"
+              className="asr-config__input"
+              value={dashscopeApiKey}
+              onChange={(e) => onDashscopeApiKeyChange(e.target.value)}
+              placeholder="sk-xxxxxxxxxxxxxxxxxxxxxxxx"
+            />
+          </div>
+        </div>
+
+        {testResult && (
+          <div className={`asr-config__result ${testResult.success ? "asr-config__result--success" : "asr-config__result--error"}`}>
+            {testResult.message}
+          </div>
+        )}
+
+        <div className="asr-config__actions">
+          <button
+            className="asr-config__btn asr-config__btn--primary"
+            onClick={handleSaveDashScope}
+            disabled={saving || !dashscopeApiKey}
+            type="button"
+          >
+            {saving ? "保存中..." : "保存配置"}
+          </button>
+        </div>
+      </div>
+
+      {/* 使用说明 */}
+      <div className="settings-section">
+        <h3 className="settings-section__title">如何获取 DashScope API Key</h3>
+        <div className="asr-config__help">
+          <p>1. 访问 <a href="https://dashscope.console.aliyun.com/" target="_blank" rel="noopener noreferrer">DashScope 控制台</a></p>
+          <p>2. 登录阿里云账号</p>
+          <p>3. 在「API-KEY 管理」中创建或复制 API Key</p>
+          <p>4. 粘贴到上方输入框并保存</p>
+          <p>5. 在侧边栏点击"开始实时翻译"即可使用</p>
+        </div>
+      </div>
+
+      {/* 旧版 NLS 配置（折叠） */}
+      <details className="settings-section asr-config__legacy">
+        <summary className="settings-section__title">旧版 NLS 配置（不推荐）</summary>
+        <p className="asr-config__desc">
+          旧版阿里云 NLS 实时语音识别，识别质量较差，仅作备用。
         </p>
 
         <div className="asr-config__form">
@@ -94,43 +150,17 @@ export function AsrConfig({
           </div>
         </div>
 
-        {testResult && (
-          <div className={`asr-config__result ${testResult.success ? "asr-config__result--success" : "asr-config__result--error"}`}>
-            {testResult.message}
-          </div>
-        )}
-
         <div className="asr-config__actions">
-          {onTest && (
-            <button
-              className="asr-config__btn asr-config__btn--secondary"
-              onClick={handleTest}
-              disabled={testing || !appKey || !accessKeyId || !accessKeySecret}
-              type="button"
-            >
-              {testing ? "测试中..." : "测试连接"}
-            </button>
-          )}
           <button
-            className="asr-config__btn asr-config__btn--primary"
-            onClick={handleSave}
+            className="asr-config__btn asr-config__btn--secondary"
+            onClick={handleSaveNls}
             disabled={saving || !appKey || !accessKeyId || !accessKeySecret}
             type="button"
           >
-            {saving ? "保存中..." : "保存配置"}
+            保存 NLS 配置
           </button>
         </div>
-      </div>
-
-      <div className="settings-section">
-        <h3 className="settings-section__title">使用说明</h3>
-        <div className="asr-config__help">
-          <p>1. 登录阿里云控制台，开通"实时语音识别"服务</p>
-          <p>2. 获取 App Key、Access Key ID 和 Access Key Secret</p>
-          <p>3. 填入上方输入框并保存</p>
-          <p>4. 在侧边栏点击"开始实时翻译"即可使用</p>
-        </div>
-      </div>
+      </details>
     </div>
   );
 }

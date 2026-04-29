@@ -9,6 +9,14 @@ use crate::translation::memory_cache::{CacheEntry, MemoryCache};
 
 pub struct EngineManagerState(pub Arc<Mutex<EngineManager>>);
 
+/// 安全截取字符串前 n 个字符（UTF-8 安全）
+fn truncate_str(s: &str, max_chars: usize) -> &str {
+    match s.char_indices().nth(max_chars) {
+        Some((idx, _)) => &s[..idx],
+        None => s,
+    }
+}
+
 const MAX_TRANSLATE_LENGTH: usize = 5000;
 
 /// 校验翻译文本输入，返回 trim 后的文本或错误
@@ -67,7 +75,7 @@ pub async fn translate(
 
     // 第一级：检查 LRU 内存缓存
     if let Some(entry) = mem_cache.get(&key).await {
-        log::debug!("[Cache] 内存命中: {}", &key[..8.min(key.len())]);
+        log::debug!("[Cache] 内存命中: {}", truncate_str(&key, 8));
         return Ok(TranslationResult {
             translated_text: entry.translated,
             source_lang: entry.source_lang,
@@ -79,7 +87,7 @@ pub async fn translate(
 
     // 第二级：检查 SQLite 磁盘缓存
     if let Ok(Some(cached)) = db.get_cache(&key).await {
-        log::debug!("[Cache] 磁盘命中: {}", &key[..8.min(key.len())]);
+        log::debug!("[Cache] 磁盘命中: {}", truncate_str(&key, 8));
         let entry = CacheEntry {
             translated: cached.translated.clone(),
             engine_id: cached.engine_id.clone(),
@@ -147,7 +155,7 @@ pub async fn translate(
         target_lang: result.target_lang.clone(),
     }).await;
 
-    log::debug!("[Cache] 写入: {}", &key[..8.min(key.len())]);
+    log::debug!("[Cache] 写入: {}", truncate_str(&key, 8));
     Ok(result)
 }
 
@@ -174,7 +182,7 @@ pub async fn translate_with_engine(
 
     // 第一级：检查 LRU 内存缓存
     if let Some(entry) = mem_cache.get(&key).await {
-        log::debug!("[Cache] 内存命中: {}", &key[..8.min(key.len())]);
+        log::debug!("[Cache] 内存命中: {}", truncate_str(&key, 8));
         return Ok(TranslationResult {
             translated_text: entry.translated,
             source_lang: entry.source_lang,
@@ -186,7 +194,7 @@ pub async fn translate_with_engine(
 
     // 第二级：检查 SQLite 磁盘缓存
     if let Ok(Some(cached)) = db.get_cache(&key).await {
-        log::debug!("[Cache] 磁盘命中: {}", &key[..8.min(key.len())]);
+        log::debug!("[Cache] 磁盘命中: {}", truncate_str(&key, 8));
         let entry = CacheEntry {
             translated: cached.translated.clone(),
             engine_id: cached.engine_id.clone(),
@@ -224,7 +232,7 @@ pub async fn translate_with_engine(
         target_lang: result.target_lang.clone(),
     }).await;
 
-    log::debug!("[Cache] 写入: {}", &key[..8.min(key.len())]);
+    log::debug!("[Cache] 写入: {}", truncate_str(&key, 8));
     Ok(result)
 }
 

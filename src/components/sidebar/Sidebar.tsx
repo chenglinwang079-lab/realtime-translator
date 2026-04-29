@@ -452,11 +452,11 @@ export function Sidebar() {
       {/* 结果区 */}
       <div className="sidebar__output-section">
         <TranslationOutput
-          translatedText={liveTranslation?.translatedText ?? currentResult?.translatedText ?? ""}
+          translatedText={liveTranslation ?? currentResult?.translatedText ?? ""}
           isTranslating={isTranslating}
           error={liveError ?? translateError}
-          engineId={liveTranslation?.engineId ?? currentResult?.engineId}
-          latencyMs={liveTranslation?.latencyMs ?? currentResult?.latencyMs}
+          engineId={liveSource === "live" ? "实时音频" : currentResult?.engineId}
+          latencyMs={currentResult?.latencyMs}
           onRetry={currentOriginal ? handleTranslate : undefined}
         />
       </div>

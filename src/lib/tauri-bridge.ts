@@ -171,6 +171,18 @@ export async function deleteApiKey(engineId: string): Promise<void> {
   return invoke("delete_api_key", { engineId });
 }
 
+export interface EngineConfigResponse {
+  engineId: string;
+  apiKey: string | null;
+  baseUrl: string | null;
+  isDefault: number;
+  extraJson: string | null;
+}
+
+export async function getEngineConfig(engineId: string): Promise<EngineConfigResponse | null> {
+  return invoke("get_engine_config", { engineId });
+}
+
 // === History ===
 
 export async function saveHistory(entry: HistoryEntry): Promise<void> {
