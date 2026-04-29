@@ -1,5 +1,5 @@
 pub mod engine;
-pub mod whisper;
+pub mod aliyun;
 
 pub use engine::{AsrEngine, AsrResult, AudioFormat};
-pub use whisper::WhisperAsrEngine;
+pub use aliyun::AliyunAsrEngine;

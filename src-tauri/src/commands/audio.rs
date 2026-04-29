@@ -220,10 +220,14 @@ pub async fn start_live_audio_translation(
     state: State<'_, Arc<LiveAudioState>>,
     capture: State<'_, Arc<Mutex<SystemAudioCapture>>>,
 ) -> Result<(), String> {
-    // 创建 Whisper ASR 引擎
-    // TODO: 从配置中读取 API Key
-    let api_key = std::env::var("OPENAI_API_KEY").unwrap_or_default();
-    let asr: Arc<dyn AsrEngine> = Arc::new(crate::asr::WhisperAsrEngine::new(api_key));
+    // 创建阿里云 ASR 引擎
+    let asr: Arc<dyn AsrEngine> = match crate::asr::AliyunAsrEngine::from_env() {
+        Ok(engine) => Arc::new(engine),
+        Err(e) => {
+            log::warn!("[LiveAudio] 阿里云 ASR 引擎初始化失败: {}", e);
+            return Err(format!("ASR 引擎初始化失败: {}", e));
+        }
+    };
 
     state.start(app, capture.inner().clone(), asr).await
 }
