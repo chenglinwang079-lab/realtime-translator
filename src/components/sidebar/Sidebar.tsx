@@ -68,6 +68,18 @@ export function Sidebar() {
     }
   }, [sentences]);
 
+  // 动态管理侧边栏高度，确保 overflow 在 WebView2 中可靠工作
+  useEffect(() => {
+    const updateHeight = () => {
+      if (sidebarRef.current) {
+        sidebarRef.current.style.height = `${window.innerHeight}px`;
+      }
+    };
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+    return () => window.removeEventListener("resize", updateHeight);
+  }, []);
+
   // 模式判断：实时模式下隐藏手动翻译区
   const isLiveMode = isLiveActive || sentences.length > 0;
 
@@ -316,9 +328,9 @@ export function Sidebar() {
         </button>
       </div>
 
-      {/* 手动翻译区 — 实时模式下隐藏 */}
+      {/* 手动翻译区 — 正常模式整体滚动 */}
       {!isLiveMode && (
-        <>
+        <div className="sidebar__normal-scroll">
           <LanguagePair
             sourceLang={sourceLang}
             targetLang={targetLang}
@@ -409,12 +421,21 @@ export function Sidebar() {
               onRetry={currentOriginal ? handleTranslate : undefined}
             />
           </div>
-        </>
+
+          <div className="sidebar__drop-hint">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+              <polyline points="17 8 12 3 7 8" />
+              <line x1="12" y1="3" x2="12" y2="15" />
+            </svg>
+            <span>拖入文本文件翻译</span>
+          </div>
+        </div>
       )}
 
-      {/* 实时模式区 */}
+      {/* 实时模式区 — 单一滚动容器 */}
       {isLiveMode && (
-        <>
+        <div className="sidebar__live-scroll">
           {/* 实时状态栏 */}
           <div className="sidebar__live-bar">
             {isLiveActive ? (
@@ -455,7 +476,7 @@ export function Sidebar() {
             </div>
           )}
 
-          {/* 句子列表 — 占满剩余空间 */}
+          {/* 句子列表 */}
           {sentences.length > 0 && (
             <div className="sidebar__live-sentences" ref={sentencesRef}>
               {sentences.map((item, i) => (
@@ -508,18 +529,6 @@ export function Sidebar() {
               )}
             </div>
           )}
-        </>
-      )}
-
-      {/* 文件拖入提示 — 仅手动模式 */}
-      {!isLiveMode && (
-        <div className="sidebar__drop-hint">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
-            <polyline points="17 8 12 3 7 8" />
-            <line x1="12" y1="3" x2="12" y2="15" />
-          </svg>
-          <span>拖入文本文件翻译</span>
         </div>
       )}
     </div>

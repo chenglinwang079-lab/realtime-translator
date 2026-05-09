@@ -5,16 +5,24 @@
   position: fixed;
   top: 0;
   right: 0;
-  height: 100vh;
   background: var(--color-bg);
   border-left: 1px solid var(--color-border);
   box-shadow: -4px 0 16px rgba(0, 0, 0, 0.06);
   display: flex;
   flex-direction: column;
   z-index: var(--z-sidebar);
-  overflow-y: auto;
   overflow-x: hidden;
   transition: width var(--duration-normal) var(--ease-out);
+}
+
+.sidebar--live-mode {
+  overflow: hidden;
+}
+
+.sidebar__live-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
 }
 
 .sidebar--resizing {
@@ -22,9 +30,6 @@
   user-select: none;
 }
 
-.sidebar--live-mode {
-  overflow-y: hidden;
-}
 
 /* === Resize Handle === */
 .sidebar__resize-handle {
@@ -413,7 +418,6 @@
   padding: var(--space-2) var(--space-3);
   border-bottom: 1px solid var(--color-border);
   background: var(--color-bg);
-  flex-shrink: 0;
   z-index: 1;
 }
 
@@ -493,7 +497,6 @@
   font-size: var(--text-2xs);
   color: var(--color-error);
   background: var(--color-error-subtle);
-  flex-shrink: 0;
 }
 
 /* === Live Current Transcript === */
@@ -505,7 +508,6 @@
   border-left: 2px solid var(--color-accent);
   margin: var(--space-2) var(--space-3) 0;
   min-height: 1.5em;
-  flex-shrink: 0;
   transition: all var(--duration-fast);
   background: var(--color-bg-secondary);
   border-radius: 0 var(--radius-xs) var(--radius-xs) 0;
@@ -517,10 +519,6 @@
   flex-direction: column;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
-  flex: 1;
-  min-height: 0;
-  overflow-y: auto;
-  scroll-behavior: smooth;
 }
 
 .sidebar__live-sentence {
@@ -552,7 +550,6 @@
 .sidebar__consolidate-section {
   padding: var(--space-2) var(--space-3) var(--space-3);
   border-top: 1px solid var(--color-border);
-  flex-shrink: 0;
 }
 
 .sidebar__consolidate-btn {
@@ -628,9 +625,18 @@
 .sidebar__output-section {
   margin-top: var(--space-2);
   border-top: 1px solid var(--color-border);
+  width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* === Normal Mode Scroll Container === */
+.sidebar__normal-scroll {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
+  overflow-x: hidden;
+  position: relative;
+  overscroll-behavior: contain;
 }
 
 /* === Translation Output === */

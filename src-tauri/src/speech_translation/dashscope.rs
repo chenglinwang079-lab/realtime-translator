@@ -2,7 +2,6 @@ use anyhow::{Context, Result};
 use async_trait::async_trait;
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
-use std::io::{Write, Seek, SeekFrom};
 use std::sync::Arc;
 use tokio::sync::{mpsc, Mutex as TokioMutex};
 use tokio_tungstenite::tungstenite::client::IntoClientRequest;
@@ -43,60 +42,8 @@ pub struct DashScopeAsrEngine {
     task_started: Arc<std::sync::atomic::AtomicBool>,
     ws_sender: Arc<TokioMutex<Option<WsSender>>>,
     task_id: Arc<TokioMutex<Option<String>>>,
-    wav_writer: Arc<std::sync::Mutex<Option<WavWriter>>>,
 }
 
-/// 简易 WAV 写入器（16kHz mono PCM16）
-struct WavWriter {
-    file: std::fs::File,
-    data_size: u32,
-}
-
-impl WavWriter {
-    fn create(path: &str, sample_rate: u32) -> std::io::Result<Self> {
-        let mut file = std::fs::File::create(path)?;
-        // WAV header placeholder（44 bytes），close 时回填大小
-        let header = Self::make_header(sample_rate, 0);
-        file.write_all(&header)?;
-        Ok(Self { file, data_size: 0 })
-    }
-
-    fn write_pcm16(&mut self, data: &[u8]) -> std::io::Result<()> {
-        self.file.write_all(data)?;
-        self.data_size += data.len() as u32;
-        Ok(())
-    }
-
-    fn finish(mut self) -> std::io::Result<()> {
-        // 回填 RIFF 和 data chunk 的大小
-        let riff_size = 36 + self.data_size;
-        self.file.seek(std::io::SeekFrom::Start(4))?;
-        self.file.write_all(&riff_size.to_le_bytes())?;
-        self.file.seek(std::io::SeekFrom::Start(40))?;
-        self.file.write_all(&self.data_size.to_le_bytes())?;
-        self.file.flush()?;
-        Ok(())
-    }
-
-    fn make_header(sample_rate: u32, data_size: u32) -> [u8; 44] {
-        let byte_rate = sample_rate * 2; // mono 16-bit
-        let mut h = [0u8; 44];
-        h[0..4].copy_from_slice(b"RIFF");
-        h[4..8].copy_from_slice(&(36u32 + data_size).to_le_bytes());
-        h[8..12].copy_from_slice(b"WAVE");
-        h[12..16].copy_from_slice(b"fmt ");
-        h[16..20].copy_from_slice(&16u32.to_le_bytes()); // fmt chunk size
-        h[20..22].copy_from_slice(&1u16.to_le_bytes());  // PCM
-        h[22..24].copy_from_slice(&1u16.to_le_bytes());  // mono
-        h[24..28].copy_from_slice(&sample_rate.to_le_bytes());
-        h[28..32].copy_from_slice(&byte_rate.to_le_bytes());
-        h[32..34].copy_from_slice(&2u16.to_le_bytes());  // block align
-        h[34..36].copy_from_slice(&16u16.to_le_bytes()); // bits per sample
-        h[36..40].copy_from_slice(b"data");
-        h[40..44].copy_from_slice(&data_size.to_le_bytes());
-        h
-    }
-}
 
 // === DashScope WebSocket 协议消息结构 ===
 
@@ -198,7 +145,6 @@ impl DashScopeAsrEngine {
             task_started: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             ws_sender: Arc::new(TokioMutex::new(None)),
             task_id: Arc::new(TokioMutex::new(None)),
-            wav_writer: Arc::new(std::sync::Mutex::new(None)),
         }
     }
 
@@ -463,27 +409,6 @@ impl SpeechTranslationEngine for DashScopeAsrEngine {
         // 保存 sender
         *self.ws_sender.lock().await = Some(ws_sender);
 
-        // 创建 WAV 录音文件（用于调试音频质量）
-        {
-            let timestamp = std::time::SystemTime::now()
-                .duration_since(std::time::UNIX_EPOCH)
-                .unwrap()
-                .as_secs();
-            let path = dirs::desktop_dir()
-                .unwrap_or_else(|| std::path::PathBuf::from("C:\\Users\\mu"))
-                .join(format!("dashscope_asr_debug_{}.wav", timestamp));
-            let path_str = path.to_string_lossy().to_string();
-            match WavWriter::create(&path_str, 16000) {
-                Ok(writer) => {
-                    log::info!("[DashScopeAsr] WAV 调试录音: {}", path_str);
-                    *self.wav_writer.lock().unwrap() = Some(writer);
-                }
-                Err(e) => {
-                    log::warn!("[DashScopeAsr] 创建 WAV 文件失败: {}", e);
-                }
-            }
-        }
-
         // 发送 run-task
         {
             let mut sender_guard = self.ws_sender.lock().await;
@@ -598,15 +523,6 @@ impl SpeechTranslationEngine for DashScopeAsrEngine {
             sample_rate, pcm.len(), num_channels, resampled.len(), pcm16.len(), max_amp, rms
         );
 
-        // 录制到 WAV 文件（调试用）
-        if let Ok(mut writer_guard) = self.wav_writer.lock() {
-            if let Some(ref mut writer) = *writer_guard {
-                if let Err(e) = writer.write_pcm16(&pcm16) {
-                    log::warn!("[DashScopeAsr] WAV 写入失败: {}", e);
-                }
-            }
-        }
-
         // 分帧发送：每帧约 100ms（16kHz/16bit/mono = 3200 字节/帧）
         let frame_bytes = (16000 * 2 * 100) / 1000; // 100ms of PCM16 mono at 16kHz
 
@@ -644,18 +560,6 @@ impl SpeechTranslationEngine for DashScopeAsrEngine {
         *self.task_id.lock().await = None;
         self.task_started.store(false, std::sync::atomic::Ordering::SeqCst);
         self.is_connected.store(false, std::sync::atomic::Ordering::SeqCst);
-
-        // 完成 WAV 录音
-        if let Ok(mut guard) = self.wav_writer.lock() {
-            if let Some(writer) = guard.take() {
-                let data_size = writer.data_size;
-                if let Err(e) = writer.finish() {
-                    log::warn!("[DashScopeAsr] WAV 完成失败: {}", e);
-                } else {
-                    log::info!("[DashScopeAsr] WAV 录音完成, {} 字节音频数据", data_size);
-                }
-            }
-        }
 
         log::info!("[DashScopeAsr] 会话已停止");
         Ok(())
