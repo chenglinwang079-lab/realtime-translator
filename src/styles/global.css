@@ -1,4 +1,4 @@
-/* Global Styles — RealtimeTranslator v0.2 "Dark Luxury" */
+/* Global Styles — RealtimeTranslator v0.3 "Figma Light" */
 
 @import "./tokens.css";
 
@@ -33,21 +33,10 @@ body {
   letter-spacing: var(--tracking-normal);
 }
 
-/* Global grain overlay for texture */
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
-  pointer-events: none;
-  z-index: 9999;
-  opacity: 0.4;
-}
-
-/* Scrollbar — thin, elegant */
+/* Scrollbar — thin, subtle */
 * {
   scrollbar-width: thin;
-  scrollbar-color: var(--color-border-accent) transparent;
+  scrollbar-color: var(--color-border-hover) transparent;
 }
 
 ::-webkit-scrollbar {
@@ -60,24 +49,24 @@ body::after {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border-accent);
+  background: var(--color-border-hover);
   border-radius: var(--radius-full);
   transition: background var(--duration-fast);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-accent);
+  background: var(--color-text-tertiary);
 }
 
-/* Selection — amber tint */
+/* Selection — blue tint */
 ::selection {
   background: var(--color-accent-subtle);
   color: var(--color-text);
 }
 
-/* Focus ring — subtle amber */
+/* Focus ring — blue */
 :focus-visible {
-  outline: 1px solid var(--color-border-accent);
+  outline: 2px solid var(--color-accent);
   outline-offset: 2px;
 }
 

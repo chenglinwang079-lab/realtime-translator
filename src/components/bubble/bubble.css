@@ -1,29 +1,17 @@
-/* Floating Bubble Styles — Dark Luxury (Opaque) */
+/* Floating Bubble Styles — Figma Light */
 
 /* === Card === */
 .surface-card {
   background: var(--color-surface);
-  border: 1px solid var(--color-border-accent);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-lg);
+  box-shadow: var(--shadow-md);
   position: relative;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   flex: 1;
   min-height: 0;
-}
-
-/* Subtle texture overlay */
-.surface-card::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background:
-    radial-gradient(ellipse at 20% 50%, rgba(232, 179, 78, 0.03) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 20%, rgba(232, 179, 78, 0.02) 0%, transparent 40%);
-  pointer-events: none;
-  z-index: 0;
 }
 
 .surface-card--padded {
@@ -76,8 +64,8 @@
   align-items: center;
   gap: var(--space-2);
   padding: var(--space-2) var(--space-3);
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border-accent);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-md);
   box-shadow: var(--shadow-sm);
 }
@@ -120,15 +108,15 @@
 .floating-bubble__hint {
   font-size: var(--text-md);
   color: var(--color-text-secondary);
-  font-weight: var(--weight-light);
-  letter-spacing: var(--tracking-wide);
+  font-weight: var(--weight-normal);
+  letter-spacing: var(--tracking-normal);
 }
 
 .floating-bubble__hint-sub {
   font-size: var(--text-2xs);
   color: var(--color-text-tertiary);
   font-family: var(--font-mono);
-  letter-spacing: var(--tracking-wider);
+  letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
 }
 
@@ -137,7 +125,7 @@
   align-items: center;
   gap: var(--space-1);
   padding: var(--space-1) var(--space-3);
-  border: 1px solid var(--color-border-accent);
+  border: 1px solid var(--color-border);
   border-radius: var(--radius-xs);
   background: transparent;
   color: var(--color-text-tertiary);
@@ -148,7 +136,7 @@
 }
 
 .floating-bubble__settings-btn:hover {
-  background: var(--color-bg-active);
+  background: var(--color-accent-subtle);
   color: var(--color-accent);
   border-color: var(--color-accent);
 }
@@ -174,24 +162,9 @@
   overflow: hidden;
 }
 
-/* Radial glow on hover */
-.bubble-actions__btn::after {
-  content: "";
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at center, var(--color-accent-subtle) 0%, transparent 70%);
-  opacity: 0;
-  transition: opacity var(--duration-fast);
-  pointer-events: none;
-}
-
-.bubble-actions__btn:hover:not(:disabled)::after {
-  opacity: 1;
-}
-
 .bubble-actions__btn:hover:not(:disabled) {
-  background: var(--color-surface-raised);
-  color: var(--color-accent);
+  background: var(--color-bg-hover);
+  color: var(--color-text-primary);
 }
 
 .bubble-actions__btn:active:not(:disabled) {
@@ -236,7 +209,7 @@
   align-items: center;
   gap: var(--space-2);
   font-size: var(--text-2xs);
-  font-weight: var(--weight-medium);
+  font-weight: var(--weight-semibold);
   color: var(--color-text-tertiary);
   text-transform: uppercase;
   letter-spacing: var(--tracking-wider);
@@ -246,7 +219,7 @@
 .translation-result__lang {
   font-size: var(--text-2xs);
   color: var(--color-accent);
-  background: var(--color-surface-raised);
+  background: var(--color-accent-subtle);
   padding: 2px 6px;
   border-radius: var(--radius-xs);
   text-transform: none;
@@ -266,22 +239,21 @@
   color: var(--color-text);
   cursor: pointer;
   padding: var(--space-3);
-  background: var(--gradient-surface-depth);
-  border: 1px solid var(--color-border-accent);
-  border-radius: var(--radius-sm);
+  background: var(--color-bg-secondary);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   transition: all var(--duration-normal) var(--ease-out);
   position: relative;
 }
 
 .translation-result__text--translated:hover {
-  background: var(--gradient-surface-depth);
   border-color: var(--color-accent);
-  box-shadow: 0 0 20px var(--color-accent-glow);
+  box-shadow: var(--shadow-glow);
 }
 
 .translation-result__divider {
   height: 1px;
-  background: var(--color-border-accent);
+  background: var(--color-border);
   margin: var(--space-1) 0;
 }
 
@@ -356,7 +328,7 @@
 
 .translation-result__latency {
   font-size: var(--text-2xs);
-  color: var(--color-accent-dim);
+  color: var(--color-accent);
   font-family: var(--font-mono);
   letter-spacing: var(--tracking-wide);
 }
@@ -365,13 +337,11 @@
 @keyframes bubble-in {
   0% {
     opacity: 0;
-    transform: translateY(12px) scale(0.95);
-    filter: blur(4px);
+    transform: translateY(8px) scale(0.98);
   }
   100% {
     opacity: 1;
     transform: translateY(0) scale(1);
-    filter: blur(0);
   }
 }
 
@@ -382,7 +352,7 @@
   }
   100% {
     opacity: 0;
-    transform: translateY(8px) scale(0.97);
+    transform: translateY(4px) scale(0.98);
   }
 }
 
@@ -390,8 +360,8 @@
   0%,
   80%,
   100% {
-    opacity: 0.2;
-    transform: scale(0.7);
+    opacity: 0.3;
+    transform: scale(0.8);
   }
   40% {
     opacity: 1;
@@ -421,9 +391,9 @@
 }
 
 .engine-switcher__trigger:hover {
-  background: var(--color-bg-active);
+  background: var(--color-accent-subtle);
   color: var(--color-accent);
-  border-color: var(--color-border-accent);
+  border-color: var(--color-accent);
 }
 
 .engine-switcher__name {
@@ -436,11 +406,11 @@
   position: absolute;
   bottom: calc(100% + var(--space-1));
   left: 0;
-  z-index: 10;
+  z-index: var(--z-dropdown);
   min-width: 180px;
-  background: var(--color-surface-raised);
-  border: 1px solid var(--color-border-accent);
-  border-radius: var(--radius-sm);
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
   box-shadow: var(--shadow-lg);
   padding: var(--space-1);
   animation: bubble-in var(--duration-fast) var(--ease-out) both;
@@ -453,7 +423,7 @@
   width: 100%;
   padding: var(--space-2) var(--space-3);
   border: none;
-  border-radius: var(--radius-xs);
+  border-radius: var(--radius-sm);
   background: transparent;
   color: var(--color-text-secondary);
   font-size: var(--text-sm);
@@ -463,12 +433,13 @@
 }
 
 .engine-switcher__option:hover:not(:disabled) {
-  background: var(--color-bg-active);
+  background: var(--color-bg-hover);
   color: var(--color-text);
 }
 
 .engine-switcher__option--active {
   color: var(--color-accent);
+  background: var(--color-accent-subtle);
 }
 
 .engine-switcher__option--disabled {
@@ -483,7 +454,7 @@
 .engine-switcher__option-badge {
   font-size: var(--text-2xs);
   color: var(--color-text-tertiary);
-  background: var(--color-bg-hover, rgba(255, 255, 255, 0.04));
+  background: var(--color-bg-secondary);
   padding: 1px var(--space-1);
   border-radius: var(--radius-xs);
 }

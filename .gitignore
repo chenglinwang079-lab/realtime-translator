@@ -25,3 +25,6 @@ dist-ssr
 
 # Debug WAV files
 *.wav
+
+# MCP browser state
+.playwright-mcp/

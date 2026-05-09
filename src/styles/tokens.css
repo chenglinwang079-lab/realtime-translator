@@ -1,42 +1,45 @@
-/* Design Tokens — RealtimeTranslator v0.2 "Dark Luxury" */
+/* Design Tokens — RealtimeTranslator v0.3 "Figma Light" */
 
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,300;1,9..40,400&family=Space+Mono:wght@400;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
 :root {
-  /* === Color Palette — Deep Obsidian + Amber === */
-  --color-bg: #0a0a0c;
-  --color-bg-elevated: #111114;
-  --color-bg-hover: rgba(255, 255, 255, 0.04);
-  --color-bg-active: rgba(255, 255, 255, 0.08);
+  /* === Color Palette — Figma Classic Blue & White === */
+  --color-bg: #FFFFFF;
+  --color-bg-elevated: #FFFFFF;
+  --color-bg-hover: #F5F5F5;
+  --color-bg-active: #F0F0F0;
+  --color-bg-secondary: #F7F7F7;
+  --color-bg-tertiary: #F0F0F0;
 
-  --color-surface: #16161a;
-  --color-surface-raised: #1c1c21;
-  --color-surface-overlay: rgba(22, 22, 26, 0.95);
+  --color-surface: #FFFFFF;
+  --color-surface-raised: #F7F7F7;
+  --color-surface-overlay: rgba(255, 255, 255, 0.95);
 
-  --color-border: rgba(255, 255, 255, 0.06);
-  --color-border-subtle: rgba(255, 255, 255, 0.03);
-  --color-border-hover: rgba(255, 255, 255, 0.12);
-  --color-border-accent: rgba(232, 179, 78, 0.3);
+  --color-border: #E5E5E5;
+  --color-border-subtle: #F0F0F0;
+  --color-border-hover: #D0D0D0;
+  --color-border-accent: #0D99FF;
 
-  --color-text: #f0ece4;
-  --color-text-secondary: rgba(240, 236, 228, 0.6);
-  --color-text-tertiary: rgba(240, 236, 228, 0.35);
-  --color-text-inverse: #0a0a0c;
+  --color-text: #1E1E1E;
+  --color-text-secondary: #6B6B6B;
+  --color-text-tertiary: #B3B3B3;
+  --color-text-inverse: #FFFFFF;
 
-  /* Amber/Gold accent — luxury feel */
-  --color-accent: #e8b34e;
-  --color-accent-hover: #f0c56a;
-  --color-accent-dim: #c49a3c;
-  --color-accent-subtle: rgba(232, 179, 78, 0.1);
-  --color-accent-glow: rgba(232, 179, 78, 0.15);
+  /* Primary Blue — Figma style */
+  --color-accent: #0D99FF;
+  --color-accent-hover: #0073E6;
+  --color-accent-dim: #0073E6;
+  --color-accent-subtle: rgba(13, 153, 255, 0.1);
+  --color-accent-glow: rgba(13, 153, 255, 0.15);
+  --color-accent-light: #E8F4FF;
 
-  /* Semantic — muted, refined */
-  --color-success: #5cb176;
-  --color-success-subtle: rgba(92, 177, 118, 0.1);
-  --color-warning: #d4a84b;
-  --color-warning-subtle: rgba(212, 168, 75, 0.1);
-  --color-error: #c75c5c;
-  --color-error-subtle: rgba(199, 92, 92, 0.1);
+  /* Semantic — clear and vibrant */
+  --color-success: #14AE5C;
+  --color-success-subtle: rgba(20, 174, 92, 0.1);
+  --color-warning: #E5A500;
+  --color-warning-subtle: rgba(229, 165, 0, 0.1);
+  --color-error: #F24822;
+  --color-error-subtle: rgba(242, 72, 34, 0.1);
 
   /* Error style base tokens */
   --error-border-color: var(--color-error);
@@ -45,9 +48,9 @@
   --error-padding: var(--space-3);
   --error-border-radius: var(--radius-sm);
 
-  /* === Typography === */
-  --font-sans: "DM Sans", -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-mono: "Space Mono", "JetBrains Mono", monospace;
+  /* === Typography — Inter for Figma style === */
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'SF Mono', 'Monaco', 'Consolas', 'Liberation Mono', monospace;
 
   --text-2xs: 0.625rem;  /* 10px */
   --text-xs: 0.6875rem;  /* 11px */
@@ -66,6 +69,7 @@
   --weight-normal: 400;
   --weight-medium: 500;
   --weight-semibold: 600;
+  --weight-bold: 700;
 
   --tracking-tight: -0.02em;
   --tracking-normal: 0;
@@ -83,7 +87,7 @@
   --space-10: 40px;
   --space-12: 48px;
 
-  /* === Radius — slightly tighter for luxury feel === */
+  /* === Radius — Figma style, slightly rounder === */
   --radius-xs: 4px;
   --radius-sm: 6px;
   --radius-md: 8px;
@@ -91,19 +95,19 @@
   --radius-xl: 16px;
   --radius-full: 9999px;
 
-  /* === Shadow — deeper, more dramatic === */
-  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.4);
-  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.5);
-  --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
-  --shadow-xl: 0 16px 64px rgba(0, 0, 0, 0.7);
-  --shadow-glow: 0 0 40px rgba(232, 179, 78, 0.08);
-  --shadow-inner: inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  /* === Shadow — soft and subtle === */
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+  --shadow-xl: 0 16px 48px rgba(0, 0, 0, 0.16);
+  --shadow-glow: 0 0 0 3px rgba(13, 153, 255, 0.15);
+  --shadow-inner: inset 0 1px 0 rgba(0, 0, 0, 0.05);
 
-  /* === Animation — smooth, deliberate === */
+  /* === Animation — smooth and responsive === */
   --duration-fast: 150ms;
-  --duration-normal: 250ms;
-  --duration-slow: 400ms;
-  --duration-slower: 600ms;
+  --duration-normal: 200ms;
+  --duration-slow: 300ms;
+  --duration-slower: 400ms;
 
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
   --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
@@ -119,21 +123,30 @@
   --bubble-max-height: 320px;
   --header-height: 40px;
 
+  /* === Z-Index Layer Management === */
+  --z-base: 0;
+  --z-float: 10;
+  --z-sidebar: 50;
+  --z-dropdown: 100;
+  --z-modal: 1000;
+  --z-tooltip: 2000;
+  --z-overlay: 3000;
+
   /* === Gradients === */
   --gradient-surface: linear-gradient(
     135deg,
-    rgba(255, 255, 255, 0.03) 0%,
+    rgba(255, 255, 255, 0.8) 0%,
     rgba(255, 255, 255, 0) 100%
   );
   --gradient-accent: linear-gradient(
     135deg,
-    #e8b34e 0%,
-    #d4a03a 100%
+    #0D99FF 0%,
+    #0073E6 100%
   );
   --gradient-border: linear-gradient(
     135deg,
-    rgba(232, 179, 78, 0.2) 0%,
-    rgba(232, 179, 78, 0) 100%
+    rgba(13, 153, 255, 0.2) 0%,
+    rgba(13, 153, 255, 0) 100%
   );
   --gradient-surface-depth: linear-gradient(
     135deg,
@@ -142,7 +155,7 @@
   );
   --gradient-glow: radial-gradient(
     ellipse at 50% 50%,
-    rgba(232, 179, 78, 0.08) 0%,
+    rgba(13, 153, 255, 0.08) 0%,
     transparent 70%
   );
 }
